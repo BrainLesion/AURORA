@@ -50,4 +50,4 @@ dev = ["pytest"]
 
 [project.urls]
 # documentation = "TODO"
-repository = "https://github.com/neuronflow/BrainLes"
+repository = "https://github.com/BrainLesion/AURORA"
