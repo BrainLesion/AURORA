@@ -1,0 +1,13 @@
+LICENSE
+README.md
+pyproject.toml
+BrainLes_AURORA.egg-info/PKG-INFO
+BrainLes_AURORA.egg-info/SOURCES.txt
+BrainLes_AURORA.egg-info/dependency_links.txt
+BrainLes_AURORA.egg-info/requires.txt
+BrainLes_AURORA.egg-info/top_level.txt
+brainles_aurora/aux.py
+brainles_aurora/download.py
+brainles_aurora/lib.py
+brainles_aurora/run_inference.py
+brainles_aurora/run_inference_cli.py
