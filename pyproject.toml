@@ -12,6 +12,7 @@ license = "AGPL-3.0"
 # core
 python = ">=3.10"
 monai = ">=1.2.0"
+torch = ">=2.1.0"
 nibabel = ">=4.0.2"
 numpy = ">=1.23.0"
 
