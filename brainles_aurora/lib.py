@@ -35,7 +35,6 @@ lib_abspath = os.path.dirname(os.path.abspath(__file__))
 model_weights_dir = lib_abspath + "/model_weights"
 if not os.path.exists(model_weights_dir):
     download_model_weights(target_folder=lib_abspath)
-    
 
 
 def _create_nifti_seg(
@@ -46,7 +45,6 @@ def _create_nifti_seg(
     whole_network_output_file,
     enhancing_network_output_file,
 ):
-
     # generate segmentation nifti
     activated_outputs = (
         (onehot_model_outputs_CHWD[0][:, :, :, :].sigmoid()).detach().cpu().numpy()
@@ -285,11 +283,17 @@ def _get_model_and_weights(mode, model_selection):
             act="mish",
         )
         if model_selection == "best":
-            weights = turbo_path(lib_abspath + "/model_weights/t1-t1c-t2-fla/t1-t1c-t2-fla_best.tar")
+            weights = turbo_path(
+                lib_abspath + "/model_weights/t1-t1c-t2-fla/t1-t1c-t2-fla_best.tar"
+            )
         elif model_selection == "last":
-            weights = turbo_path(lib_abspath + "/model_weights/t1-t1c-t2-fla/t1-t1c-t2-fla_last.tar")
+            weights = turbo_path(
+                lib_abspath + "/model_weights/t1-t1c-t2-fla/t1-t1c-t2-fla_last.tar"
+            )
         elif model_selection == "vanilla":
-            weights = turbo_path(lib_abspath + "/model_weights/t1-t1c-t2-fla/vanilla.tar")
+            weights = turbo_path(
+                lib_abspath + "/model_weights/t1-t1c-t2-fla/vanilla.tar"
+            )
         else:
             raise NotImplementedError(
                 "no checkpoint implemented for this selection strategy."
@@ -306,9 +310,13 @@ def _get_model_and_weights(mode, model_selection):
         )
 
         if model_selection == "best":
-            weights = turbo_path(lib_abspath + "/model_weights/t1c-t1-fla/t1c-t1-fla_best.tar")
+            weights = turbo_path(
+                lib_abspath + "/model_weights/t1c-t1-fla/t1c-t1-fla_best.tar"
+            )
         elif model_selection == "last":
-            weights = turbo_path(lib_abspath + "/model_weights/t1c-t1-fla/t1c-t1-fla_last.tar")
+            weights = turbo_path(
+                lib_abspath + "/model_weights/t1c-t1-fla/t1c-t1-fla_last.tar"
+            )
         else:
             raise NotImplementedError(
                 "no checkpoint implemented for this selection strategy."
@@ -344,9 +352,13 @@ def _get_model_and_weights(mode, model_selection):
         )
 
         if model_selection == "best":
-            weights = turbo_path(lib_abspath + "/model_weights/t1c-fla/t1c-fla_best.tar")
+            weights = turbo_path(
+                lib_abspath + "/model_weights/t1c-fla/t1c-fla_best.tar"
+            )
         elif model_selection == "last":
-            weights = turbo_path(lib_abspath + "/model_weights/t1c-fla/t1c-fla_last.tar")
+            weights = turbo_path(
+                lib_abspath + "/model_weights/t1c-fla/t1c-fla_last.tar"
+            )
         else:
             raise NotImplementedError(
                 "no checkpoint implemented for this selection strategy."
@@ -425,7 +437,7 @@ def single_inference(
     metastasis_network_outputs_file=None,
     cuda_devices="0",
     tta=True,
-    sliding_window_batch_size=1, # faster for single interference (on RTX 3090)
+    sliding_window_batch_size=1,  # faster for single interference (on RTX 3090)
     workers=0,
     threshold=0.5,
     sliding_window_overlap=0.5,
