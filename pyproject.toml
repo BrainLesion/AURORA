@@ -8,6 +8,9 @@ authors = [
 ]
 license = "AGPL-3.0"
 
+# Add the package.exclude field here
+exclude = ["brainles_aurora/model_weights"]
+
 [tool.poetry.dependencies]
 # core
 python = ">=3.10"
