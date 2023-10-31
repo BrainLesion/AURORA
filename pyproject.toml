@@ -1,28 +1,52 @@
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+
 [tool.poetry]
 name = "brainles_aurora"
-version = "0.0.4"
+version = "0.0.0" # will be overwritten by poetry-dynamic-versioning but needs to be set
 description = "TODO."
+license = "AGPL-3.0"
+
 authors = [
   "Florian Kofler <florian.kofler@tum.de>",
   "Isra Mekki <isra.mekki@helmholtz-muenchen.de>",
 ]
-license = "AGPL-3.0"
+
+maintainers = [
+  "Florian Kofler <florian.kofler@tum.de>",
+  "Isra Mekki <isra.mekki@helmholtz-muenchen.de>",
+  "Marcel Rosier <marcel.rosier@tum.de>",
+]
+
+readme = "README.md"
+repository = "https://github.com/BrainLesion/AURORA"
+#documentation = ""
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+]
 
 # Add the package.exclude field here
 exclude = ["brainles_aurora/model_weights"]
 
 [tool.poetry.dependencies]
 # core
-python = ">=3.10"
-monai = ">=1.2.0"
-torch = ">=2.1.0"
-nibabel = ">=4.0.2"
-numpy = ">=1.23.0"
+python = "^3.10"
+monai = "^1.2.0"
+torch = "^2.1.0"
+nibabel = "^4.0.2"
+numpy = "^1.23.0"
 
 # utils
-PyGithub = ">=1.57"
-tqdm = ">=4.64.1"
-path = ">=16.2.0"
+PyGithub = "^1.57"
+tqdm = "^4.64.1"
+path = "^16.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
