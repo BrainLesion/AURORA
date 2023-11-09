@@ -1,13 +1,33 @@
-from __future__ import annotations
-
+# basics
 import os
+import time
+from typing import Dict
 
+import monai
+import nibabel as nib
+import numpy as np
+# dl
 import torch
-from aux import turbo_path
-from enums import ModalityMode, ModelSelection
+from monai.data import list_data_collate
+from monai.inferers import SlidingWindowInferer
+from monai.networks.nets import BasicUNet
+from monai.transforms import (Compose, EnsureChannelFirstd, Lambdad,
+                              LoadImageD, RandGaussianNoised,
+                              ScaleIntensityRangePercentilesd, ToTensord)
 from path import Path
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from brainles_aurora.aux import turbo_path
+from brainles_aurora.download import download_model_weights
+from brainles_aurora.enums import ModalityMode, ModelSelection
+
 
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
+
+MODEL_WEIGHTS_DIR = os.path.join(LIB_ABSPATH, "model_weights")
+if not os.path.exists(MODEL_WEIGHTS_DIR):
+    download_model_weights(target_folder=LIB_ABSPATH)
 
 
 def infer(
@@ -26,12 +46,21 @@ def infer(
     threshold=0.5,
     sliding_window_overlap=0.5,
     crop_size=(192, 192, 32),
-    model_selection="best",
+    model_selection=ModelSelection.BEST,
         verbosity=True):
     # configure logger
     # transform inputs to paths
-    t1_file, t1c_file, t2_file, fla_file = [turbo_path(
-        f) for f in [t1_file, t1c_file, t2_file, fla_file] if f]
+    if t1_file is not None:
+        t1_file = turbo_path(t1_file)
+
+    if t1c_file is not None:
+        t1c_file = turbo_path(t1c_file)
+
+    if t2_file is not None:
+        t2_file = turbo_path(t2_file)
+
+    if fla_file is not None:
+        fla_file = turbo_path(fla_file)
     # mode
     mode: ModalityMode = _determine_mode(t1_file, t1c_file, t2_file, fla_file)
 
@@ -46,7 +75,7 @@ def infer(
         fla_file=fla_file,
         workers=workers,
     )
-    # model
+    # load model
     model = _get_model(
         mode=mode,
         model_selection=model_selection,
@@ -65,6 +94,37 @@ def infer(
     )
 
     # evaluate
+    with torch.no_grad():
+        model.eval()
+        # loop through batches
+        for data in tqdm(data_loader, 0):
+            inputs = data["images"]
+
+            outputs = inferer(inputs, model)
+            if tta:
+                outputs = _apply_test_time_augmentations(
+                    data, inferer, model
+                )
+
+            # generate segmentation nifti
+            try:
+                reference_file = data["t1c"][0]
+            except:
+                try:
+                    reference_file = data["fla"][0]
+                except:
+                    reference_file = data["t1"][0]
+                else:
+                    FileNotFoundError("no reference file found!")
+
+            _create_nifti_seg(
+                threshold=threshold,
+                reference_file=reference_file,
+                onehot_model_outputs_CHWD=outputs,
+                output_file=segmentation_file,
+                whole_network_output_file=whole_network_outputs_file,
+                enhancing_network_output_file=metastasis_network_outputs_file,
+            )
 
 
 def _configure_device(cuda_devices: str) -> torch.device:
@@ -78,11 +138,12 @@ def _configure_device(cuda_devices: str) -> torch.device:
     return device
 
 
-def _determine_mode(t1_file,
-                    t1c_file,
-                    t2_file,
-                    fla_file
-                    ) -> ModalityMode:
+def _determine_mode(
+    t1_file: Path | None,
+    t1c_file: Path | None,
+    t2_file: Path | None,
+    fla_file: Path | None,
+) -> ModalityMode:
     def _present(file: Path | None) -> bool:
         return False if file == None else os.path.exists(file)
 
@@ -117,12 +178,12 @@ def _determine_mode(t1_file,
 
 
 def _get_dloader(
-    mode,
-    t1_file,
-    t1c_file,
-    t2_file,
-    fla_file,
-    workers,
+    mode: ModalityMode,
+    t1_file: Path | None,
+    t1c_file: Path | None,
+    t2_file: Path | None,
+    fla_file: Path | None,
+    workers: int,
 ):
     # init transforms
     transforms = [
@@ -170,7 +231,7 @@ def _get_dloader(
             "images": [t1c_file, fla_file]
         },
         ModalityMode.T1C_O: {
-            "t1c": t1_file,
+            "t1c": t1c_file,
             "images": [t1c_file]
         },
         ModalityMode.FLA_O: {
@@ -226,23 +287,97 @@ def _get_model(mode: ModalityMode, model_selection: ModelSelection, device: torc
         act="mish",
     )
 
-    if device.type == "cuda":
-        model = torch.nn.DataParallel(model)
+    # if device.type == "cuda": // weight loading fails if this check is active
+    model = torch.nn.DataParallel(model)
     model = model.to(device)
 
     # load weights
     weights = os.path.join(
-        LIB_ABSPATH,
-        "model_weights",
-        mode.value,
-        f"{mode.value}_{model_selection.value}.tar",
+        MODEL_WEIGHTS_DIR,
+        mode,
+        f"{mode}_{model_selection}.tar",
     )
+
+    checkpoint = torch.load(weights, map_location="cpu")
 
     if not os.path.exists(weights):
         raise NotImplementedError(
-            f"No weights found for model {mode.value} and selection {model_selection.value}")
+            f"No weights found for model {mode} and selection {model_selection}")
 
-    checkpoint = torch.load(model_weights, map_location="cpu")
     model.load_state_dict(checkpoint["model_state"])
 
     return model
+
+
+def _apply_test_time_augmentations(data: Dict, inferer: SlidingWindowInferer, model: torch.nn.Module):
+    n = 1.0
+    for _ in range(4):
+        # test time augmentations
+        _img = RandGaussianNoised(keys="images", prob=1.0, std=0.001)(data)[
+            "images"
+        ]
+
+        output = inferer(_img, model)
+        outputs = outputs + output
+        n = n + 1.0
+        for dims in [[2], [3]]:
+            flip_pred = inferer(torch.flip(_img, dims=dims), model)
+
+            output = torch.flip(flip_pred, dims=dims)
+            outputs = outputs + output
+            n = n + 1.0
+    outputs = outputs / n
+    return outputs
+
+
+# TODO refactor!
+def _create_nifti_seg(
+    threshold,
+    reference_file,
+    onehot_model_outputs_CHWD,
+    output_file,
+    whole_network_output_file,
+    enhancing_network_output_file,
+):
+    # generate segmentation nifti
+    activated_outputs = (
+        (onehot_model_outputs_CHWD[0][:, :, :,
+         :].sigmoid()).detach().cpu().numpy()
+    )
+
+    binarized_outputs = activated_outputs >= threshold
+
+    binarized_outputs = binarized_outputs.astype(np.uint8)
+
+    whole_metastasis = binarized_outputs[0]
+    enhancing_metastasis = binarized_outputs[1]
+
+    final_seg = whole_metastasis.copy()
+    final_seg[whole_metastasis == 1] = 1  # edema
+    final_seg[enhancing_metastasis == 1] = 2  # enhancing
+
+    # get header and affine from T1
+    REF = nib.load(reference_file)
+
+    segmentation_image = nib.Nifti1Image(final_seg, REF.affine, REF.header)
+    nib.save(segmentation_image, output_file)
+
+    if whole_network_output_file:
+        whole_network_output_file = Path(
+            os.path.abspath(whole_network_output_file))
+
+        whole_out = binarized_outputs[0]
+
+        whole_out_image = nib.Nifti1Image(whole_out, REF.affine, REF.header)
+        nib.save(whole_out_image, whole_network_output_file)
+
+    if enhancing_network_output_file:
+        enhancing_network_output_file = Path(
+            os.path.abspath(enhancing_network_output_file)
+        )
+
+        enhancing_out = binarized_outputs[1]
+
+        enhancing_out_image = nib.Nifti1Image(
+            enhancing_out, REF.affine, REF.header)
+        nib.save(enhancing_out_image, enhancing_network_output_file)
