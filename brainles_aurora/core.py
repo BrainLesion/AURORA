@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from brainles_aurora.aux import turbo_path
 from brainles_aurora.download import download_model_weights
-from brainles_aurora.enums import ModalityMode, ModelSelection
+from brainles_aurora.constants import ModalityMode, ModelSelection
 
 
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
