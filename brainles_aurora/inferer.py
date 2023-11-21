@@ -68,6 +68,10 @@ class AuroraInferer(ABC):
         self.metastasis_network_outputs_file = metastasis_network_outputs_file
         self.log_level = log_level
 
+        # setup
+        self._setup_logger()
+        self.mode = self._check_files()
+
     def _setup_logger(self):
         logging.basicConfig(
 
@@ -144,7 +148,7 @@ class AuroraInferer(ABC):
         ]
 
         # Add EnsureChannelFirstd for single modality modes
-        if self.mode in [ModalityMode.T1_O, ModalityMode.T1C_O, ModalityMode.FLA_O]:
+        if len(self._get_not_none_files()) == 1:
             transforms.insert(1, EnsureChannelFirstd(keys="images"))
         inference_transforms = Compose(transforms)
 
@@ -194,7 +198,7 @@ class AuroraInferer(ABC):
         weights = os.path.join(
             MODEL_WEIGHTS_DIR,
             self.mode,
-            f"{self.mode}_{self.model_selection}.tar",
+            f"{self.model_selection}.tar",
         )
 
         if not os.path.exists(weights):
@@ -258,6 +262,45 @@ class AuroraInferer(ABC):
                 enhancing_out, ref.affine, ref.header)
             nib.save(enhancing_out_image, enhancing_network_output_file)
 
+    def _sliding_window_inference(self):
+        inferer = SlidingWindowInferer(
+            roi_size=self.crop_size,  # = patch_size
+            sw_batch_size=self.sliding_window_batch_size,
+            sw_device=self.device,
+            device=self.device,
+            overlap=self.sliding_window_overlap,
+            mode="gaussian",
+            padding_mode="replicate",
+        )
+
+        with torch.no_grad():
+            self.model.eval()
+            # loop through batches
+            for data in tqdm(self.data_loader, 0):
+                inputs = data["images"]
+
+                outputs = inferer(inputs, self.model)
+                if self.tta:
+                    outputs = _apply_test_time_augmentations(
+                        data, inferer, self.model
+                    )
+
+                # generate segmentation nifti
+                try:
+                    reference_file = data["t1c"][0]
+                except:
+                    try:
+                        reference_file = data["fla"][0]
+                    except:
+                        reference_file = data["t1"][0]
+                    else:
+                        FileNotFoundError("no reference file found!")
+
+                self._create_nifti_seg(
+                    reference_file=reference_file,
+                    onehot_model_outputs_CHWD=outputs,
+                )
+
     def infer(self):
         logging.info("Loading data and model")
         self.data_loader = self._get_data_loader()
@@ -315,49 +358,10 @@ class GPUInferer(AuroraInferer):
         # GPUInferer specific variables
         self.cuda_devices = cuda_devices
 
-        # setup
-        self._setup_logger()
-        self.mode = self._check_files()
         self.device = self._configure_device()
 
     def _infer(self):
-        inferer = SlidingWindowInferer(
-            roi_size=self.crop_size,  # = patch_size
-            sw_batch_size=self.sliding_window_batch_size,
-            sw_device=self.device,
-            device=self.device,
-            overlap=self.sliding_window_overlap,
-            mode="gaussian",
-            padding_mode="replicate",
-        )
-
-        with torch.no_grad():
-            self.model.eval()
-            # loop through batches
-            for data in tqdm(self.data_loader, 0):
-                inputs = data["images"]
-
-                outputs = inferer(inputs, self.model)
-                if self.tta:
-                    outputs = _apply_test_time_augmentations(
-                        data, inferer, self.model
-                    )
-
-                # generate segmentation nifti
-                try:
-                    reference_file = data["t1c"][0]
-                except:
-                    try:
-                        reference_file = data["fla"][0]
-                    except:
-                        reference_file = data["t1"][0]
-                    else:
-                        FileNotFoundError("no reference file found!")
-
-                self._create_nifti_seg(
-                    reference_file=reference_file,
-                    onehot_model_outputs_CHWD=outputs,
-                )
+        self._sliding_window_inference()
 
     def _configure_device(self) -> torch.device:
 
@@ -411,50 +415,11 @@ class CPUInferer(AuroraInferer):
             metastasis_network_outputs_file=metastasis_network_outputs_file,
             log_level=log_level,
         )
-
-        # setup
-        self._setup_logger()
-        self.mode = self._check_files()
+        # CPUInferer specific variables -> None
         self.device = self._configure_device()
 
     def _infer(self):
-        inferer = SlidingWindowInferer(
-            roi_size=self.crop_size,  # = patch_size
-            sw_batch_size=self.sliding_window_batch_size,
-            sw_device=self.device,
-            device=self.device,
-            overlap=self.sliding_window_overlap,
-            mode="gaussian",
-            padding_mode="replicate",
-        )
-
-        with torch.no_grad():
-            self.model.eval()
-            # loop through batches
-            for data in tqdm(self.data_loader, 0):
-                inputs = data["images"]
-
-                outputs = inferer(inputs, self.model)
-                if self.tta:
-                    outputs = _apply_test_time_augmentations(
-                        data, inferer, self.model
-                    )
-
-                # generate segmentation nifti
-                try:
-                    reference_file = data["t1c"][0]
-                except:
-                    try:
-                        reference_file = data["fla"][0]
-                    except:
-                        reference_file = data["t1"][0]
-                    else:
-                        FileNotFoundError("no reference file found!")
-
-                self._create_nifti_seg(
-                    reference_file=reference_file,
-                    onehot_model_outputs_CHWD=outputs,
-                )
+        self._sliding_window_inference()
 
     def _configure_device(self) -> torch.device:
         device = torch.device("cpu")
