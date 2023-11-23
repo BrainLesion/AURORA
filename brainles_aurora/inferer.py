@@ -73,7 +73,7 @@ class AuroraInferer(ABC):
         self.images = self._validate_images()
         self.mode = self._determine_inferece_mode()
 
-    def _setup_logger(self):
+    def _setup_logger(self) -> None:
         logging.basicConfig(
             format='%(asctime)s %(levelname)s: %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
@@ -85,7 +85,7 @@ class AuroraInferer(ABC):
             ]
         )
 
-    def _validate_images(self):
+    def _validate_images(self) -> List[np.ndarray | None] | List[Path | None]:
         def _validate_img(data: str | Path | np.ndarray | None) -> np.ndarray | Path | None:
             if data is None:
                 return None
@@ -209,7 +209,7 @@ class AuroraInferer(ABC):
 
         return model
 
-    def _apply_test_time_augmentations(self, data: Dict, inferer: SlidingWindowInferer):
+    def _apply_test_time_augmentations(self, data: Dict, inferer: SlidingWindowInferer) -> torch.Tensor:
         n = 1.0
         for _ in range(4):
             # test time augmentations
@@ -229,12 +229,12 @@ class AuroraInferer(ABC):
         outputs = outputs / n
         return outputs
 
-    def _get_not_none_files(self) -> List[np.ndarray]:
+    def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
         return [img for img in self.images if img is not None]
 
     def _create_nifti_seg(self,
                           reference_file: str | Path,
-                          onehot_model_outputs_CHWD):
+                          onehot_model_outputs_CHWD) -> None:
         # generate segmentation nifti
         activated_outputs = (
             (onehot_model_outputs_CHWD[0][:, :, :,
@@ -280,7 +280,7 @@ class AuroraInferer(ABC):
                     enhancing_out, ref.affine, ref.header)
                 nib.save(enhancing_out_image, enhancing_network_output_file)
 
-    def _sliding_window_inference(self):
+    def _sliding_window_inference(self) -> None:
         inferer = SlidingWindowInferer(
             roi_size=self.crop_size,  # = patch_size
             sw_batch_size=self.sliding_window_batch_size,
@@ -319,7 +319,7 @@ class AuroraInferer(ABC):
                     onehot_model_outputs_CHWD=outputs,
                 )
 
-    def infer(self):
+    def infer(self) -> None:
         logging.info("Setting up Dataloader")
         self.data_loader = self._get_data_loader()
         logging.info("Loading Model and weights")
@@ -333,7 +333,7 @@ class AuroraInferer(ABC):
         pass
 
     @abstractmethod
-    def _infer(self):
+    def _infer(self) -> None:
         pass
 
 
@@ -382,8 +382,8 @@ class GPUInferer(AuroraInferer):
 
         self.device = self._configure_device()
 
-    def _infer(self):
-        self._sliding_window_inference()
+    def _infer(self) -> None:
+        return self._sliding_window_inference()
 
     def _configure_device(self) -> torch.device:
 
@@ -442,8 +442,8 @@ class CPUInferer(AuroraInferer):
         )
         self.device = self._configure_device()
 
-    def _infer(self):
-        self._sliding_window_inference()
+    def _infer(self) -> None:
+        return self._sliding_window_inference()
 
     def _configure_device(self) -> torch.device:
         device = torch.device("cpu")
