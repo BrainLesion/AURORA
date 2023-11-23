@@ -1,15 +1,12 @@
 
 import logging
-# basics
 import os
-import time
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
 
 import monai
 import nibabel as nib
 import numpy as np
-# dl
 import torch
 from monai.data import list_data_collate
 from monai.inferers import SlidingWindowInferer
@@ -22,9 +19,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from brainles_aurora.aux import turbo_path
+from brainles_aurora.constants import (IMGS_TO_MODE_DICT, InputMode, InferenceMode,
+                                       ModelSelection)
 from brainles_aurora.download import download_model_weights
-from brainles_aurora.constants import ModalityMode, ModelSelection, FILES_TO_MODE_DICT
-
 
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
 
@@ -37,10 +34,10 @@ class AuroraInferer(ABC):
 
     def __init__(self,
                  segmentation_file: str | np.ndarray,
-                 t1_file: str | np.ndarray | None = None,
-                 t1c_file: str | np.ndarray | None = None,
-                 t2_file: str | np.ndarray | None = None,
-                 fla_file: str | np.ndarray | None = None,
+                 t1: str | Path | np.ndarray | None = None,
+                 t1c: str | Path | np.ndarray | None = None,
+                 t2: str | Path | np.ndarray | None = None,
+                 fla: str | Path | np.ndarray | None = None,
                  tta: bool = True,
                  sliding_window_batch_size: int = 1,
                  workers: int = 0,
@@ -53,10 +50,10 @@ class AuroraInferer(ABC):
                  log_level: int | str = logging.INFO,
                  ) -> None:
         self.segmentation_file = segmentation_file
-        self.t1_file = t1_file
-        self.t1c_file = t1c_file
-        self.t2_file = t2_file
-        self.fla_file = fla_file
+        self.t1 = t1
+        self.t1c = t1c
+        self.t2 = t2
+        self.fla = fla
         self.tta = tta
         self.sliding_window_batch_size = sliding_window_batch_size
         self.workers = workers
@@ -70,11 +67,11 @@ class AuroraInferer(ABC):
 
         # setup
         self._setup_logger()
-        self.mode = self._check_files()
+        self.images = self._validate_images()
+        self.mode = self._determine_inferece_mode()
 
     def _setup_logger(self):
         logging.basicConfig(
-
             format='%(asctime)s %(levelname)s: %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
             level=self.log_level,
@@ -85,54 +82,54 @@ class AuroraInferer(ABC):
             ]
         )
 
-    def _check_files(self):
-        # transform inputs to paths
-        if self.t1_file is not None:
-            self.t1_file = turbo_path(self.t1_file)
+    def _validate_images(self):
+        def _validate_img(data: str | Path | np.ndarray | None) -> np.ndarray | Path | None:
+            if data is None:
+                return None
+            if isinstance(data, np.ndarray):
+                self.input_mode = InputMode.NUMPY
+                return data.astype(np.float32)
+            if not os.path.exists(data):
+                raise FileNotFoundError(f"File {data} not found")
+            if not (data.endswith(".nii.gz") or data.endswith(".nii")):
+                raise ValueError(
+                    f"File {data} must be a nifti file with extension .nii or .nii.gz")
+            self.input_mode = InputMode.FILE
+            return turbo_path(data)
 
-        if self.t1c_file is not None:
-            self.t1c_file = turbo_path(self.t1c_file)
+        images = [_validate_img(img)
+                  for img in [self.t1, self.t1c, self.t2, self.fla]]
 
-        if self.t2_file is not None:
-            self.t2_file = turbo_path(self.t2_file)
-
-        if self.fla_file is not None:
-            self.fla_file = turbo_path(self.fla_file)
-
-        # return  mode based on files
-        return self._determine_mode()
-
-    def _determine_mode(self) -> ModalityMode:
-
-        # check which files are given and if they exist
-        def _present(file: Path | None) -> bool:
-            if file is None:
-                return False
-            if not os.path.exists(file):
-                raise FileNotFoundError(f"File {file} not found")
-            return True
-
-        t1, t1c, t2, fla = map(
-            _present, [self.t1_file, self.t1c_file, self.t2_file, self.fla_file])
-
+        assert len(set(map(type, [img for img in images if img is not None]))
+                   ) == 1, f"All passed images must be of the same type! Accepted Input types: {list(InputMode)}"
         logging.info(
-            f"Received files: t1: {t1} t1c: {t1c} t2: {t2} flair: {fla}"
+            f"Successfully validated input images. Input mode: {self.input_mode}")
+        return images
+
+    def _determine_inferece_mode(self) -> InferenceMode:
+
+        _t1, _t1c, _t2, _fla = [img is not None for img in self.images]
+        logging.info(
+            f"Received files: T1: {_t1}, T1C: {_t1c}, T2: {_t2}, FLAIR: {_fla}"
         )
 
         # check if files are given in a valid combination that has an existing model implementation
-        mode = FILES_TO_MODE_DICT.get((t1, t1c, t2, fla), None)
+        mode = IMGS_TO_MODE_DICT.get((_t1, _t1c, _t2, _fla), None)
 
         if mode is None:
             raise NotImplementedError(
-                "No model implemented for this combination of files")
+                "No model implemented for this combination of images")
 
-        logging.info(f"Inference mode based on passed files: {mode}")
+        logging.info(f"Inference mode based on passed images: {mode}")
         return mode
 
     def _get_data_loader(self) -> torch.utils.data.DataLoader:
         # init transforms
         transforms = [
-            LoadImageD(keys=["images"]),
+            LoadImageD(keys=["images"]
+                       ) if self.input_mode == InputMode.FILE else None,
+            EnsureChannelFirstd(keys="images") if len(
+                self._get_not_none_files()) == 1 else None,
             Lambdad(["images"], np.nan_to_num),
             ScaleIntensityRangePercentilesd(
                 keys="images",
@@ -146,22 +143,20 @@ class AuroraInferer(ABC):
             ),
             ToTensord(keys=["images"]),
         ]
-
-        # Add EnsureChannelFirstd for single modality modes
-        if len(self._get_not_none_files()) == 1:
-            transforms.insert(1, EnsureChannelFirstd(keys="images"))
+        # filter None transforms taht may be included due to conditions
+        transforms = list(filter(None, transforms))
         inference_transforms = Compose(transforms)
 
         # init data dictionary
         data = {}
-        if self.t1_file is not None:
-            data['t1'] = self.t1_file
-        if self.t1c_file is not None:
-            data['t1c'] = self.t1c_file
-        if self.t2_file is not None:
-            data['t2'] = self.t2_file
-        if self.fla_file is not None:
-            data['fla'] = self.fla_file
+        if self.t1 is not None:
+            data['t1'] = self.t1
+        if self.t1c is not None:
+            data['t1c'] = self.t1c
+        if self.t2 is not None:
+            data['t2'] = self.t2
+        if self.fla is not None:
+            data['fla'] = self.fla
         # method returns files in standard order T1 T1C T2 FLAIR
         data['images'] = self._get_not_none_files()
 
@@ -203,17 +198,35 @@ class AuroraInferer(ABC):
 
         if not os.path.exists(weights):
             raise NotImplementedError(
-                f"No weights found for model {mode} and selection {model_selection}")
+                f"No weights found for model {self.mode} and selection {self.model_selection}")
 
         checkpoint = torch.load(weights, map_location=self.device)
         model.load_state_dict(checkpoint["model_state"])
 
         return model
 
-    def _get_not_none_files(self) -> List[str | np.ndarray | Path]:
-        # returns not None files in standard order T1 T1C T2 FLAIR
-        images = [self.t1_file, self.t1c_file, self.t2_file, self.fla_file]
-        return list(filter(None, images))
+    def _apply_test_time_augmentations(self, data: Dict, inferer: SlidingWindowInferer):
+        n = 1.0
+        for _ in range(4):
+            # test time augmentations
+            _img = RandGaussianNoised(keys="images", prob=1.0, std=0.001)(data)[
+                "images"
+            ]
+
+            output = inferer(_img, self.model)
+            outputs = outputs + output
+            n = n + 1.0
+            for dims in [[2], [3]]:
+                flip_pred = inferer(torch.flip(_img, dims=dims), self.model)
+
+                output = torch.flip(flip_pred, dims=dims)
+                outputs = outputs + output
+                n = n + 1.0
+        outputs = outputs / n
+        return outputs
+
+    def _get_not_none_files(self) -> List[np.ndarray]:
+        return [img for img in self.images if img is not None]
 
     def _create_nifti_seg(self,
                           reference_file: str | Path,
@@ -224,7 +237,7 @@ class AuroraInferer(ABC):
                                           :].sigmoid()).detach().cpu().numpy()
         )
 
-        binarized_outputs = activated_outputs >= threshold
+        binarized_outputs = activated_outputs >= self.threshold
 
         binarized_outputs = binarized_outputs.astype(np.uint8)
 
@@ -239,7 +252,7 @@ class AuroraInferer(ABC):
         ref = nib.load(reference_file)
 
         segmentation_image = nib.Nifti1Image(final_seg, ref.affine, ref.header)
-        nib.save(segmentation_image, output_file)
+        nib.save(segmentation_image, self.output_file)
 
         if whole_network_output_file:
             whole_network_output_file = Path(
@@ -281,8 +294,8 @@ class AuroraInferer(ABC):
 
                 outputs = inferer(inputs, self.model)
                 if self.tta:
-                    outputs = _apply_test_time_augmentations(
-                        data, inferer, self.model
+                    outputs = self._apply_test_time_augmentations(
+                        data, inferer
                     )
 
                 # generate segmentation nifti
@@ -318,14 +331,17 @@ class AuroraInferer(ABC):
         pass
 
 
+####################
+# GPU Inferer
+####################
 class GPUInferer(AuroraInferer):
 
     def __init__(self,
                  segmentation_file: str | np.ndarray,
-                 t1_file: str | np.ndarray | None = None,
-                 t1c_file: str | np.ndarray | None = None,
-                 t2_file: str | np.ndarray | None = None,
-                 fla_file: str | np.ndarray | None = None,
+                 t1: str | Path | np.ndarray | None = None,
+                 t1c: str | Path | np.ndarray | None = None,
+                 t2: str | Path | np.ndarray | None = None,
+                 fla: str | Path | np.ndarray | None = None,
                  cuda_devices: str = "0",
                  tta: bool = True,
                  sliding_window_batch_size: int = 1,
@@ -340,10 +356,10 @@ class GPUInferer(AuroraInferer):
                  ) -> None:
         super().__init__(
             segmentation_file=segmentation_file,
-            t1_file=t1_file,
-            t1c_file=t1c_file,
-            t2_file=t2_file,
-            fla_file=fla_file,
+            t1=t1,
+            t1c=t1c,
+            t2=t2,
+            fla=fla,
             tta=tta,
             sliding_window_batch_size=sliding_window_batch_size,
             workers=workers,
@@ -368,25 +384,28 @@ class GPUInferer(AuroraInferer):
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = self.cuda_devices
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        assert torch.cuda.is_available(), "No cuda device available while using GPUInferer"
 
-        assert device == "cuda", "No cuda device available while using GPUInferer"
-
+        device = torch.device("cuda")
         logging.info(f"Using device: {device}")
 
         # clean memory
         torch.cuda.empty_cache()
         return device
 
+####################
+# CPU Inferer
+####################
+
 
 class CPUInferer(AuroraInferer):
 
     def __init__(self,
                  segmentation_file: str | np.ndarray,
-                 t1_file: str | np.ndarray | None = None,
-                 t1c_file: str | np.ndarray | None = None,
-                 t2_file: str | np.ndarray | None = None,
-                 fla_file: str | np.ndarray | None = None,
+                 t1: str | Path | np.ndarray | None = None,
+                 t1c: str | Path | np.ndarray | None = None,
+                 t2: str | Path | np.ndarray | None = None,
+                 fla: str | Path | np.ndarray | None = None,
                  tta: bool = True,
                  sliding_window_batch_size: int = 1,
                  workers: int = 0,
@@ -400,10 +419,10 @@ class CPUInferer(AuroraInferer):
                  ) -> None:
         super().__init__(
             segmentation_file=segmentation_file,
-            t1_file=t1_file,
-            t1c_file=t1c_file,
-            t2_file=t2_file,
-            fla_file=fla_file,
+            t1=t1,
+            t1c=t1c,
+            t2=t2,
+            fla=fla,
             tta=tta,
             sliding_window_batch_size=sliding_window_batch_size,
             workers=workers,
@@ -415,7 +434,6 @@ class CPUInferer(AuroraInferer):
             metastasis_network_outputs_file=metastasis_network_outputs_file,
             log_level=log_level,
         )
-        # CPUInferer specific variables -> None
         self.device = self._configure_device()
 
     def _infer(self):
