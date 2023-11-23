@@ -67,6 +67,9 @@ class AuroraInferer(ABC):
 
         # setup
         self._setup_logger()
+
+        logging.info(f"Initialized {self.__class__.__name__}")
+
         self.images = self._validate_images()
         self.mode = self._determine_inferece_mode()
 
@@ -102,6 +105,7 @@ class AuroraInferer(ABC):
 
         assert len(set(map(type, [img for img in images if img is not None]))
                    ) == 1, f"All passed images must be of the same type! Accepted Input types: {list(InputMode)}"
+
         logging.info(
             f"Successfully validated input images. Input mode: {self.input_mode}")
         return images
@@ -120,7 +124,7 @@ class AuroraInferer(ABC):
             raise NotImplementedError(
                 "No model implemented for this combination of images")
 
-        logging.info(f"Inference mode based on passed images: {mode}")
+        logging.info(f"Inference mode: {mode}")
         return mode
 
     def _get_data_loader(self) -> torch.utils.data.DataLoader:
@@ -143,7 +147,7 @@ class AuroraInferer(ABC):
             ),
             ToTensord(keys=["images"]),
         ]
-        # filter None transforms taht may be included due to conditions
+        # filter None transforms that may be included due to conditioal transforms above
         transforms = list(filter(None, transforms))
         inference_transforms = Compose(transforms)
 
@@ -248,32 +252,33 @@ class AuroraInferer(ABC):
         final_seg[whole_metastasis == 1] = 1  # edema
         final_seg[enhancing_metastasis == 1] = 2  # enhancing
 
-        # get header and affine from reference
-        ref = nib.load(reference_file)
+        # TODO: implement saving operation for numpy input type!
+        if self.input_mode == InputMode.FILE:
+            ref = nib.load(reference_file)
+            segmentation_image = nib.Nifti1Image(
+                final_seg, ref.affine, ref.header)
+            nib.save(segmentation_image, self.output_file)
 
-        segmentation_image = nib.Nifti1Image(final_seg, ref.affine, ref.header)
-        nib.save(segmentation_image, self.output_file)
+            if whole_network_output_file:
+                whole_network_output_file = Path(
+                    os.path.abspath(whole_network_output_file))
 
-        if whole_network_output_file:
-            whole_network_output_file = Path(
-                os.path.abspath(whole_network_output_file))
+                whole_out = binarized_outputs[0]
 
-            whole_out = binarized_outputs[0]
+                whole_out_image = nib.Nifti1Image(
+                    whole_out, ref.affine, ref.header)
+                nib.save(whole_out_image, whole_network_output_file)
 
-            whole_out_image = nib.Nifti1Image(
-                whole_out, ref.affine, ref.header)
-            nib.save(whole_out_image, whole_network_output_file)
+            if enhancing_network_output_file:
+                enhancing_network_output_file = Path(
+                    os.path.abspath(enhancing_network_output_file)
+                )
 
-        if enhancing_network_output_file:
-            enhancing_network_output_file = Path(
-                os.path.abspath(enhancing_network_output_file)
-            )
+                enhancing_out = binarized_outputs[1]
 
-            enhancing_out = binarized_outputs[1]
-
-            enhancing_out_image = nib.Nifti1Image(
-                enhancing_out, ref.affine, ref.header)
-            nib.save(enhancing_out_image, enhancing_network_output_file)
+                enhancing_out_image = nib.Nifti1Image(
+                    enhancing_out, ref.affine, ref.header)
+                nib.save(enhancing_out_image, enhancing_network_output_file)
 
     def _sliding_window_inference(self):
         inferer = SlidingWindowInferer(
@@ -315,8 +320,9 @@ class AuroraInferer(ABC):
                 )
 
     def infer(self):
-        logging.info("Loading data and model")
+        logging.info("Setting up Dataloader")
         self.data_loader = self._get_data_loader()
+        logging.info("Loading Model and weights")
         self.model = self._get_model()
 
         logging.info(f"Running inference on {self.device}")
