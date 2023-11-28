@@ -9,15 +9,11 @@ Deep learning models for the manuscript
 
 ## Installation
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/HelmholtzAI-Consultants-Munich/AURORA
-   ```
-2. Go into the repository and install the requirements:
-   ```
-   cd AURORA
-   pip install -r requirements.txt
-   ```
+With a Python 3.10+ environment you can install directly from [pypi.org](https://pypi.org/project/brainles-aurora/):
+
+```
+pip install brainles-aurora
+```
 
 ## Recommended Environment
 
