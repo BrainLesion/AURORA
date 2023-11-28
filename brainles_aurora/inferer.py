@@ -19,8 +19,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from brainles_aurora.aux import turbo_path
-from brainles_aurora.constants import (IMGS_TO_MODE_DICT, InputMode, InferenceMode,
-                                       ModelSelection)
+from brainles_aurora.constants import (IMGS_TO_MODE_DICT, InferenceMode,
+                                       InputMode, ModelSelection)
 from brainles_aurora.download import download_model_weights
 
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +33,7 @@ if not os.path.exists(MODEL_WEIGHTS_DIR):
 class AuroraInferer(ABC):
 
     def __init__(self,
-                 segmentation_file: str | np.ndarray,
+                 segmentation_file: str | np.ndarray,  # TODO np??
                  t1: str | Path | np.ndarray | None = None,
                  t1c: str | Path | np.ndarray | None = None,
                  t2: str | Path | np.ndarray | None = None,
@@ -71,7 +71,7 @@ class AuroraInferer(ABC):
         logging.info(f"Initialized {self.__class__.__name__}")
 
         self.images = self._validate_images()
-        self.mode = self._determine_inferece_mode()
+        self.mode = self._determine_inference_mode()
 
     def _setup_logger(self) -> None:
         logging.basicConfig(
@@ -110,7 +110,7 @@ class AuroraInferer(ABC):
             f"Successfully validated input images. Input mode: {self.input_mode}")
         return images
 
-    def _determine_inferece_mode(self) -> InferenceMode:
+    def _determine_inference_mode(self) -> InferenceMode:
 
         _t1, _t1c, _t2, _fla = [img is not None for img in self.images]
         logging.info(
