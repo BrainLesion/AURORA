@@ -1,51 +1,52 @@
+[![PyPI version panoptica](https://badge.fury.io/py/brainles-aurora.svg)](https://pypi.python.org/pypi/brainles-aurora/)
+[![Documentation Status](https://readthedocs.org/projects/brainles-aurora/badge/?version=latest)](http://brainles-aurora.readthedocs.io/?badge=latest)
+
 # AURORA
+
 Deep learning models for the manuscript
 
 [Identifying core MRI sequences for reliable automatic brain metastasis segmentation](https://www.medrxiv.org/content/10.1101/2023.05.02.23289342v1)
 
 ## Installation
 
-1) Clone this repository:
-    ```bash
-    git clone https://github.com/HelmholtzAI-Consultants-Munich/AURORA
-    ```
-2) Go into the repository and install the requirements:
-    ```
-    cd AURORA
-    pip install -r requirements.txt 
-    ```
-    
+With a Python 3.10+ environment you can install directly from [pypi.org](https://pypi.org/project/brainles-aurora/):
+
+```
+pip install brainles-aurora
+```
+
 ## Recommended Environment
-* CUDA 11.4+ (https://developer.nvidia.com/cuda-toolkit)
-* Python 3.10+
-* GPU with at least 8GB of VRAM
+
+- CUDA 11.4+ (https://developer.nvidia.com/cuda-toolkit)
+- Python 3.10+
+- GPU with at least 8GB of VRAM
 
 further details in requirements.txt
 
-## Usuage
+## Usage
 
 **Tutorial.ipynb**: Step-by-step example of project setup and segmentation of supplied example data ([BraTS-METS](https://doi.org/10.48550/arXiv.2306.00838))
 
-**run_inference_cli.py**: Simple command-line implementation: 
+**run_inference_cli.py**: Simple command-line implementation:
 
 This command will list all available options:
 
     python3 /run_inference_cli.py --help
-    
+
 **run_inference.py**: Example script for single inference. More customization possible.
 
-***Input: t1_file, t1c_file, t2_file, fla_file***
+**_Input: t1_file, t1c_file, t2_file, fla_file_**
 
 All 4 input files must be nifti (nii.gz) files containing 3D MRIs. Please ensure that all input images are correctly preprocessed (skullstripped, co-registered, registered on SRI-24). You can use [BraTS Toolkit](https://github.com/neuronflow/BraTS-Toolkit) for preprocessing (please follow the instructions [here](https://github.com/neuronflow/BraTS-Toolkit)).
 
-***Output: segmentation_file***
+**_Output: segmentation_file_**
 
 Add path to your desired output folder.
 
-***optional Output: whole_network_outputs_file, enhancing_network_outputs_file***
-
+**_optional Output: whole_network_outputs_file, enhancing_network_outputs_file_**
 
 ## Citation
+
 when using the software please cite TODO
 
 ```
@@ -76,6 +77,7 @@ also consider citing the original AURORA manuscript: [Development and external v
 ```
 
 ## Four Sequences
+
 If you have all four MR sequences (T1, T1c, T2, FLAIR) consider using:
 https://github.com/neuronflow/AURORA
 
@@ -86,6 +88,7 @@ This project is licensed under the terms of the [GNU Affero General Public Licen
 Contact us regarding licensing.
 
 ## Contact / Feedback / Questions
+
 If possible please open a GitHub issue [here](https://github.com/neuronflow/AURORA/issues).
 
 For inquiries not suitable for GitHub issues:
