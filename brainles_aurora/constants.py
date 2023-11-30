@@ -17,8 +17,8 @@ class ModelSelection(str, Enum):
     VANILLA = 'vanilla'
 
 
-class InputMode(str, Enum):
-    FILE = "NIFTI_FILEPATH"
+class DataMode(str, Enum):
+    NIFTI_FILE = "NIFTI_FILEPATH"
     NUMPY = "NP_NDARRAY"
 
 
