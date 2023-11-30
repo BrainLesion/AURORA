@@ -7,7 +7,7 @@ import unittest
 import nibabel as nib
 import numpy as np
 import logging
-from brainles_aurora.inferer import AuroraInferer
+from brainles_aurora.inferer import AuroraInferer, AuroraGPUInferer
 
 
 class TestInferer(unittest.TestCase):
@@ -39,3 +39,11 @@ class TestInferer(unittest.TestCase):
                 t1c=self.load_np_from_nifti(self.t1c),
             )
             inferer.infer(output_file="your_segmentation_file.nii.gz")
+   
+    def test_gpu(self):
+        # with self.assertRaises(AssertionError):
+        inferer = AuroraGPUInferer(
+            t1=self.t1,
+            t1c=self.t1c,
+        )
+        inferer.infer(output_file="your_segmentation_file.nii.gz")
