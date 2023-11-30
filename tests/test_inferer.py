@@ -7,7 +7,7 @@ import unittest
 import nibabel as nib
 import numpy as np
 import logging
-from brainles_aurora.inferer import CPUInferer
+from brainles_aurora.inferer import AuroraInferer
 
 
 class TestInferer(unittest.TestCase):
@@ -18,29 +18,24 @@ class TestInferer(unittest.TestCase):
         self.t2 = "example_data/BraTS-MET-00110-000-t2w.nii.gz"
         self.fla = "example_data/BraTS-MET-00110-000-t2f.nii.gz"
 
-        return super().setUp()
-
     def load_np_from_nifti(self, path: str) -> np.ndarray:
         return nib.load(path).get_fdata()
 
     def test_invalid_inference_mode(self):
         """Might change with new models, rather a dummy test"""
         with self.assertRaises(NotImplementedError):
-            inferer = CPUInferer(segmentation_file="your_segmentation_file.nii.gz",
-                                 #    t1=self.t1,
-                                 t1c=self.t1c,
-                                 t2=self.t2,
-                                 fla=self.fla)
-            inferer.infer()
+            inferer = AuroraInferer(
+                #    t1=self.t1,
+                t1c=self.t1c,
+                t2=self.t2,
+                fla=self.fla
+            )
+            inferer.infer(output_file="your_segmentation_file.nii.gz")
 
     def test_mixed_input_types(self):
         with self.assertRaises(AssertionError):
-            inferer = CPUInferer(segmentation_file="your_segmentation_file.nii.gz",
-                                 t1=self.t1,
-                                 t1c=self.load_np_from_nifti(self.t1c),
-                                 )
-            inferer.infer()
-
-    def tearDown(self) -> None:
-        logging.shutdown()
-        return super().tearDown()
+            inferer = AuroraInferer(
+                t1=self.t1,
+                t1c=self.load_np_from_nifti(self.t1c),
+            )
+            inferer.infer(output_file="your_segmentation_file.nii.gz")
