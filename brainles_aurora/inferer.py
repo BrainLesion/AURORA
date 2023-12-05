@@ -1,10 +1,11 @@
-
-from abc import ABC, abstractmethod
 import logging
 import os
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple
+
 import monai
 import nibabel as nib
 import numpy as np
@@ -15,7 +16,6 @@ from monai.networks.nets import BasicUNet
 from monai.transforms import (Compose, EnsureChannelFirstd, Lambdad,
                               LoadImageD, RandGaussianNoised,
                               ScaleIntensityRangePercentilesd, ToTensord)
-from pathlib import Path
 from torch.utils.data import DataLoader
 
 from brainles_aurora.aux import turbo_path
@@ -26,18 +26,23 @@ from brainles_aurora.download import download_model_weights
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_WEIGHTS_DIR = Path(LIB_ABSPATH) / "model_weights"
-if not os.path.exists(MODEL_WEIGHTS_DIR):
+if not MODEL_WEIGHTS_DIR.exists():
     download_model_weights(target_folder=LIB_ABSPATH)
 
 
 @dataclass
-class AuroraInfererConfig:
+class BaseConfig:
+    output_mode: DataMode = DataMode.NIFTI_FILE
+    output_folder: str | Path = "aurora_output"
+    log_level: int | str = logging.INFO
+
+
+@dataclass
+class AuroraInfererConfig(BaseConfig):
     t1: str | Path | np.ndarray | None = None
     t1c: str | Path | np.ndarray | None = None
     t2: str | Path | np.ndarray | None = None
     fla: str | Path | np.ndarray | None = None
-    output_mode: DataMode = DataMode.NIFTI_FILE
-    output_folder: str | Path = "aurora_output"
     output_whole_network: bool = False
     output_metastasis_network: bool = False
     tta: bool = True
@@ -47,42 +52,25 @@ class AuroraInfererConfig:
     sliding_window_overlap: float = 0.5
     crop_size: Tuple[int, int, int] = (192, 192, 32)
     model_selection: ModelSelection = ModelSelection.BEST
-    log_level: int | str = logging.INFO
 
 
 class AbstractInferer(ABC):
-    @abstractmethod
-    def _test():
-        # saniztize config
-        # preproc
-        # model
-        # postproc
-        # save
-        pass
 
-
-class AuroraInferer():
-
-    def __init__(self, config: AuroraInfererConfig) -> None:
+    def __init__(self, config: BaseConfig) -> None:
         self.config = config
 
-        self.output_folder = Path(os.path.abspath(self.config.output_folder)) / f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self._sanitize_config()
+
+        # setup output folder
+        self.output_folder = Path(os.path.abspath(
+            self.config.output_folder)) / f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
         self.output_folder.mkdir(exist_ok=True, parents=True)
-        # setup
+
+        # setup logger
         self._setup_logger()
 
-        logging.info(
-            f"Initialized {self.__class__.__name__}")
-        # setup output folder
-        
-        self.images = self._validate_images()
-        self.mode = self._determine_inference_mode()
-
-        self.device = self._configure_device()
-        logging.info("Setting up Dataloader")
-        self.data_loader = self._get_data_loader()
-        logging.info("Loading Model and weights")
-        self.model = self._get_model()
+    def _sanitize_config(self) -> None:
+        pass  # TODO implement
 
     def _setup_logger(self) -> None:
         logging.basicConfig(
@@ -96,8 +84,31 @@ class AuroraInferer():
             ]
         )
 
+    @abstractmethod
+    def infer(self):
+        pass
+
+
+class AuroraInferer(AbstractInferer):
+
+    def __init__(self, config: AuroraInfererConfig) -> None:
+        # TODO move weights path / download to config and setup
+        super().__init__(config=config)
+
+        logging.info(
+            f"Initialized {self.__class__.__name__}")
+
+        self.images = self._validate_images()
+        self.mode = self._determine_inference_mode()
+
+        self.device = self._configure_device()
+        logging.info("Setting up Dataloader")
+        self.data_loader = self._get_data_loader()
+        logging.info("Loading Model and weights")
+        self.model = self._get_model()
+
     def _validate_images(self) -> List[np.ndarray | None] | List[Path | None]:
-        def _validate_img(data: str | Path | np.ndarray | None) -> np.ndarray | Path | None:
+        def _validate_image(data: str | Path | np.ndarray | None) -> np.ndarray | Path | None:
             if data is None:
                 return None
             if isinstance(data, np.ndarray):
@@ -111,11 +122,11 @@ class AuroraInferer():
             self.input_mode = DataMode.NIFTI_FILE
             return turbo_path(data)
 
-        images = [_validate_img(img)
+        images = [_validate_image(img)
                   for img in [self.config.t1, self.config.t1c, self.config.t2, self.config.fla]]
 
         # make sure all inputs have the same type
-        unique_types = set(filter(None, map(type, images)))
+        unique_types = set(map(type, filter(lambda x: x is not None, images)))
         assert len(
             unique_types) == 1, f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
 
