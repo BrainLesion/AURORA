@@ -85,6 +85,7 @@ class AuroraInferer():
         self.model = self._get_model()
 
     def _setup_logger(self) -> None:
+        self.log_path = self.output_folder / "aurora_inferer.log"
         logging.basicConfig(
             format='%(asctime)s %(levelname)s: %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
@@ -92,9 +93,10 @@ class AuroraInferer():
             encoding='utf-8',
             handlers=[
                 logging.StreamHandler(),
-                logging.FileHandler(self.output_folder / "aurora_inferer.log")
+                logging.FileHandler(self.log_path)
             ]
         )
+        logging.info(f"Logging to: {self.log_path}")
 
     def _validate_images(self) -> List[np.ndarray | None] | List[Path | None]:
         def _validate_img(data: str | Path | np.ndarray | None) -> np.ndarray | Path | None:

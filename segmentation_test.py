@@ -1,5 +1,6 @@
 
 
+from brainles_aurora.constants import DataMode
 from brainles_aurora.inferer import AuroraInferer, AuroraGPUInferer, AuroraInfererConfig
 import os
 from path import Path
@@ -23,6 +24,8 @@ def gpu_nifti():
         t1c=t1c,
         t2=t2,
         fla=fla,
+        output_metastasis_network=True,
+        output_whole_network=True,
     )
     inferer = AuroraGPUInferer(
         config=config,
@@ -55,6 +58,20 @@ def gpu_np():
     )
     inferer.infer()
 
+def gpu_output_np():
+    config = AuroraInfererConfig(
+        t1=load_np_from_nifti(t1),
+        t1c=load_np_from_nifti(t1c),
+        t2=load_np_from_nifti(t2),
+        fla=load_np_from_nifti(fla),
+        output_mode=DataMode.NUMPY,
+    )
+    inferer = AuroraGPUInferer(
+        config=config,
+    )
+    data = inferer.infer()
+    print(data)
+
 
 if __name__ == "__main__":
-    gpu_nifti()
+    gpu_output_np()
