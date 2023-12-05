@@ -197,7 +197,8 @@ class AuroraInferer():
 
         return model
 
-    def _apply_test_time_augmentations(self, data: Dict, inferer: SlidingWindowInferer) -> torch.Tensor:
+    # TODO types!
+    def _apply_test_time_augmentations(self, outputs, data: Dict, inferer: SlidingWindowInferer) -> torch.Tensor:
         n = 1.0
         for _ in range(4):
             # test time augmentations
@@ -220,13 +221,14 @@ class AuroraInferer():
     def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
         return [img for img in self.images if img is not None]
 
-    def _create_nifti_seg(self,
-                          output_file: str | Path,
-                          output_mode: DataMode,
-                          reference_file: str | Path,
-                          onehot_model_outputs_CHWD
-                          ) -> None | Dict[str, np.ndarray]:
-        # generate segmentation nifti
+    def _save_ouput(self,
+                    output_file: str | Path,
+                    output_mode: DataMode,
+                    reference_file: str | Path,
+                    onehot_model_outputs_CHWD
+                    ) -> None | Dict[str, np.ndarray]:
+        logging.info(f"Saving output in mode: {output_mode}")
+        # generate segmentation
         activated_outputs = (
             (onehot_model_outputs_CHWD[0][:, :, :,
                                           :].sigmoid()).detach().cpu().numpy()
@@ -262,6 +264,8 @@ class AuroraInferer():
             nib.save(segmentation_image, output_file)
 
             if self.whole_network_outputs_file:
+                logging.info(
+                    f"Saving whole network outputs to Nifti file {self.whole_network_outputs_file}")
                 self.whole_network_outputs_file = Path(
                     os.path.abspath(self.whole_network_outputs_file))
 
@@ -269,15 +273,17 @@ class AuroraInferer():
                     whole_out, affine, header)
                 nib.save(whole_out_image, self.whole_network_outputs_file)
 
-            if self.enhancing_network_outputs_file:
-                self.enhancing_network_outputs_file = Path(
-                    os.path.abspath(self.enhancing_network_outputs_file)
+            if self.metastasis_network_outputs_file:
+                logging.info(
+                    f"Saving metastasis network outputs to Nifti file {self.metastasis_network_outputs_file}")
+                self.metastasis_network_outputs_file = Path(
+                    os.path.abspath(self.metastasis_network_outputs_file)
                 )
 
                 enhancing_out_image = nib.Nifti1Image(
                     enhancing_out, affine, header)
                 nib.save(enhancing_out_image,
-                         self.enhancing_network_outputs_file)
+                         self.metastasis_network_outputs_file)
         else:
             raise NotImplementedError(
                 "Numpy output mode not implemented yet!"
@@ -307,8 +313,9 @@ class AuroraInferer():
 
                 outputs = inferer(inputs, self.model)
                 if self.config.tta:
+                    logging.info("Applying test time augmentations")
                     outputs = self._apply_test_time_augmentations(
-                        data, inferer
+                        outputs, data, inferer
                     )
 
                 # generate segmentation nifti
@@ -322,7 +329,7 @@ class AuroraInferer():
                     else:
                         FileNotFoundError("no reference file found!")
 
-                self._create_nifti_seg(
+                self._save_ouput(
                     output_file=output_file,
                     output_mode=output_mode,
                     reference_file=reference_file,
