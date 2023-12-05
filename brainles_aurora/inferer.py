@@ -142,13 +142,13 @@ class AuroraInferer():
         # init data dictionary
         data = {}
         if self.config.t1 is not None:
-            data['t1'] = self.t1
+            data['t1'] = self.config.t1
         if self.config.t1c is not None:
-            data['t1c'] = self.t1c
+            data['t1c'] = self.config.t1c
         if self.config.t2 is not None:
-            data['t2'] = self.t2
+            data['t2'] = self.config.t2
         if self.config.fla is not None:
-            data['fla'] = self.fla
+            data['fla'] = self.config.fla
         # method returns files in standard order T1 T1C T2 FLAIR
         data['images'] = self._get_not_none_files()
 
