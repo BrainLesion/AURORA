@@ -263,27 +263,27 @@ class AuroraInferer():
                 final_seg, affine, header)
             nib.save(segmentation_image, output_file)
 
-            if self.whole_network_outputs_file:
+            if self.config.whole_network_outputs_file:
                 logging.info(
-                    f"Saving whole network outputs to Nifti file {self.whole_network_outputs_file}")
-                self.whole_network_outputs_file = Path(
-                    os.path.abspath(self.whole_network_outputs_file))
+                    f"Saving whole network outputs to Nifti file {self.config.whole_network_outputs_file}")
+                self.config.whole_network_outputs_file = Path(
+                    os.path.abspath(self.config.whole_network_outputs_file))
 
                 whole_out_image = nib.Nifti1Image(
                     whole_out, affine, header)
-                nib.save(whole_out_image, self.whole_network_outputs_file)
+                nib.save(whole_out_image, self.config.whole_network_outputs_file)
 
-            if self.metastasis_network_outputs_file:
+            if self.config.metastasis_network_outputs_file:
                 logging.info(
-                    f"Saving metastasis network outputs to Nifti file {self.metastasis_network_outputs_file}")
-                self.metastasis_network_outputs_file = Path(
-                    os.path.abspath(self.metastasis_network_outputs_file)
+                    f"Saving metastasis network outputs to Nifti file {self.config.metastasis_network_outputs_file}")
+                self.config.metastasis_network_outputs_file = Path(
+                    os.path.abspath(self.config.metastasis_network_outputs_file)
                 )
 
                 enhancing_out_image = nib.Nifti1Image(
                     enhancing_out, affine, header)
                 nib.save(enhancing_out_image,
-                         self.metastasis_network_outputs_file)
+                         self.config.metastasis_network_outputs_file)
         else:
             raise NotImplementedError(
                 "Numpy output mode not implemented yet!"
