@@ -59,8 +59,6 @@ class AbstractInferer(ABC):
     def __init__(self, config: BaseConfig) -> None:
         self.config = config
 
-        self._sanitize_config()
-
         # setup output folder
         self.output_folder = Path(os.path.abspath(
             self.config.output_folder)) / f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -68,9 +66,6 @@ class AbstractInferer(ABC):
 
         # setup logger
         self._setup_logger()
-
-    def _sanitize_config(self) -> None:
-        pass  # TODO implement
 
     def _setup_logger(self) -> None:
         self.log_path = self.output_folder / "aurora_inferer.log"
@@ -223,8 +218,8 @@ class AuroraInferer(AbstractInferer):
         model = model.to(self.device)
         checkpoint = torch.load(weights_path, map_location=self.device)
 
-        # The models were trained using dataparallel, so we need to remove the 'module.' prefix
-        # for cpu inference since DataParallel only works on GPU
+        # The models were trained using DataParallel, hence we need to remove the 'module.' prefix
+        # for cpu inference to enable checkpoint loading (since DataParallel is not usable for CPU)
         if self.device == torch.device("cpu"):
             if 'module.' in list(checkpoint["model_state"].keys())[0]:
                 checkpoint["model_state"] = {
@@ -258,9 +253,10 @@ class AuroraInferer(AbstractInferer):
     def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
         return [img for img in self.images if img is not None]
 
-    def _save_as_nifti(self, postproc_data: Dict[str, np.ndarray], reference_file: Path) -> None:
+    def _save_as_nifti(self, postproc_data: Dict[str, np.ndarray]) -> None:
         # determine affine/ header
         if self.input_mode == DataMode.NIFTI_FILE:
+            reference_file = self._get_not_none_files()[0]
             ref = nib.load(reference_file)
             affine, header = ref.affine, ref.header
         else:
@@ -328,26 +324,13 @@ class AuroraInferer(AbstractInferer):
                         outputs, data, inferer
                     )
 
-                # generate segmentation nifti # TODO improve
-                try:
-                    reference_file = data["t1c"][0]
-                except:
-                    try:
-                        reference_file = data["fla"][0]
-                    except:
-                        reference_file = data["t1"][0]
-                    else:
-                        FileNotFoundError("No reference file found!")
-
                 postprocessed_data = self._post_process(
                     onehot_model_outputs_CHWD=outputs,
                 )
                 if self.config.output_mode == DataMode.NUMPY:
                     return postprocessed_data
                 else:
-                    self._save_as_nifti(
-                        postproc_data=postprocessed_data,
-                        reference_file=reference_file)
+                    self._save_as_nifti(postproc_data=postprocessed_data)
                     return
 
     def infer(self) -> None:
