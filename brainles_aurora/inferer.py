@@ -94,7 +94,7 @@ class AuroraInferer():
         # make sure all inputs have the same type
         unique_types = set(filter(None, map(type, images)))
         assert len(
-            unique_types) == 1, f"All passed images must be of the same type! Accepted Input types: {list(DataMode)}"
+            unique_types) == 1, f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
 
         logging.info(
             f"Successfully validated input images. Input mode: {self.input_mode}")
