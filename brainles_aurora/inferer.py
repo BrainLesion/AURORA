@@ -1,10 +1,9 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import monai
 import nibabel as nib
@@ -20,7 +19,8 @@ from torch.utils.data import DataLoader
 
 from brainles_aurora.aux import turbo_path
 from brainles_aurora.constants import (IMGS_TO_MODE_DICT, DataMode,
-                                       InferenceMode, ModelSelection)
+                                       InferenceMode)
+from brainles_aurora.dataclasses import BaseConfig, AuroraInfererConfig
 from brainles_aurora.download import download_model_weights
 
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
@@ -28,30 +28,6 @@ LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
 MODEL_WEIGHTS_DIR = Path(LIB_ABSPATH) / "model_weights"
 if not MODEL_WEIGHTS_DIR.exists():
     download_model_weights(target_folder=LIB_ABSPATH)
-
-
-@dataclass
-class BaseConfig:
-    output_mode: DataMode = DataMode.NIFTI_FILE
-    output_folder: str | Path = "aurora_output"
-    log_level: int | str = logging.INFO
-
-
-@dataclass
-class AuroraInfererConfig(BaseConfig):
-    t1: str | Path | np.ndarray | None = None
-    t1c: str | Path | np.ndarray | None = None
-    t2: str | Path | np.ndarray | None = None
-    fla: str | Path | np.ndarray | None = None
-    output_whole_network: bool = False
-    output_metastasis_network: bool = False
-    tta: bool = True
-    sliding_window_batch_size: int = 1
-    workers: int = 0
-    threshold: float = 0.5
-    sliding_window_overlap: float = 0.5
-    crop_size: Tuple[int, int, int] = (192, 192, 32)
-    model_selection: ModelSelection = ModelSelection.BEST
 
 
 class AbstractInferer(ABC):
@@ -84,6 +60,15 @@ class AbstractInferer(ABC):
     @abstractmethod
     def infer(self):
         pass
+
+
+class DockerInferer(AbstractInferer):
+
+    def __init__(self, config: BaseConfig) -> None:
+        super().__init__(config)
+
+    def infer(self):
+        return super().infer()
 
 
 class AuroraInferer(AbstractInferer):
