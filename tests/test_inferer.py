@@ -34,7 +34,7 @@ def load_np_from_nifti(request):
 
 def test_invalid_inference_mode(t1c_path, t2_path, fla_path):
     """Might change with new models, rather a dummy test"""
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(AssertionError):
         config = AuroraInfererConfig(t1c=t1c_path, t2=t2_path, fla=fla_path)
         inferer = AuroraInferer(config=config)
         inferer.infer(output_file="your_segmentation_file.nii.gz")
