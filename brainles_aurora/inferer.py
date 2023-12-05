@@ -1,4 +1,5 @@
 
+from abc import ABC, abstractmethod
 import logging
 import os
 from dataclasses import dataclass
@@ -36,6 +37,10 @@ class AuroraInfererConfig:
     t1c: str | Path | np.ndarray | None = None
     t2: str | Path | np.ndarray | None = None
     fla: str | Path | np.ndarray | None = None
+    output_mode: DataMode = DataMode.NIFTI_FILE
+    output_folder: str | Path = "aurora_output"
+    output_whole_network: bool = False
+    output_metastasis_network: bool = False
     tta: bool = True
     sliding_window_batch_size: int = 1
     workers: int = 0
@@ -43,9 +48,18 @@ class AuroraInfererConfig:
     sliding_window_overlap: float = 0.5
     crop_size: Tuple[int, int, int] = (192, 192, 32)
     model_selection: ModelSelection = ModelSelection.BEST
-    whole_network_outputs_file: str | None = None
-    metastasis_network_outputs_file: str | None = None
     log_level: int | str = logging.INFO
+
+
+class AbstractInferer(ABC):
+    @abstractmethod
+    def _test():
+        # saniztize config
+        # preproc
+        # model
+        # postproc
+        # save
+        pass
 
 
 class AuroraInferer():
@@ -56,10 +70,17 @@ class AuroraInferer():
         # setup
         self._setup_logger()
 
-        logging.info(f"Initialized {self.__class__.__name__}")
+        logging.info(
+            f"Initialized {self.__class__.__name__}")
 
         self.images = self._validate_images()
         self.mode = self._determine_inference_mode()
+
+        self.device = self._configure_device()
+        logging.info("Setting up Dataloader")
+        self.data_loader = self._get_data_loader()
+        logging.info("Loading Model and weights")
+        self.model = self._get_model()
 
     def _setup_logger(self) -> None:
         logging.basicConfig(
@@ -186,15 +207,16 @@ class AuroraInferer():
 
         model = model.to(self.device)
         checkpoint = torch.load(weights_path, map_location=self.device)
-        
-        # The models were trained using dataparallel, so we need to remove the 'module.' prefix 
+
+        # The models were trained using dataparallel, so we need to remove the 'module.' prefix
         # for cpu inference since DataParallel only works on GPU
         if self.device == torch.device("cpu"):
             if 'module.' in list(checkpoint["model_state"].keys())[0]:
-                checkpoint["model_state"] = {k.replace('module.', ''): v for k, v in checkpoint["model_state"].items()}
+                checkpoint["model_state"] = {
+                    k.replace('module.', ''): v for k, v in checkpoint["model_state"].items()}
         else:
             model = torch.nn.parallel.DataParallel(model)
-        
+
         model.load_state_dict(checkpoint["model_state"])
 
         return model
@@ -221,23 +243,33 @@ class AuroraInferer():
     def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
         return [img for img in self.images if img is not None]
 
-    def _save_output_nifti(self,
-                           output: np.ndarray,
-                           output_file: str | Path,
-                           affine: np.ndarray,
-                           header: nib.Nifti1Header | None) -> None:
-        logging.info(
-            f"Saving outputs to Nifti file {output_file}")
-        output_file = Path(os.path.abspath(output_file))
-        output_image = nib.Nifti1Image(output, affine, header)
-        nib.save(output_image, output_file)
+    def _save_as_nifti(self, postproc_data: Dict[str, np.ndarray], reference_file: Path) -> None:
+        # determine affine/ header
+        if self.input_mode == DataMode.NIFTI_FILE:
+            ref = nib.load(reference_file)
+            affine, header = ref.affine, ref.header
+        else:
+            logging.warning(
+                f"Writing NIFTI output after NumPy input, using default affine=np.eye(4) and header=None")
+            affine, header = np.eye(4), None
 
-    def _save_output(self,
-                     output_file: str | Path,
-                     output_mode: DataMode,
-                     reference_file: str | Path,
-                     onehot_model_outputs_CHWD
-                     ) -> None | Dict[str, np.ndarray]:
+        # setup directory
+        output_folder = Path(os.path.abspath(self.config.output_folder))
+        output_folder.mkdir(exist_ok=True, parents=True)
+
+        logging.info(f"Output folder set to {output_folder}")
+
+        # save niftis
+        for key, data in postproc_data.items():
+            output_file = output_folder / f"{key}.nii.gz"
+            output_image = nib.Nifti1Image(data, affine, header)
+            nib.save(output_image, output_file)
+            logging.info(f"Saved {key} to {output_file}")
+
+    def _post_process(self,
+                      output_mode: DataMode,
+                      onehot_model_outputs_CHWD
+                      ) -> Dict[str, np.ndarray]:
         logging.info(f"Saving output in mode: {output_mode}")
 
         # create segmentations
@@ -258,41 +290,14 @@ class AuroraInferer():
         whole_out = binarized_outputs[0]
         enhancing_out = binarized_outputs[1]
 
-        # save segmentations
-        if output_mode == DataMode.NIFTI_FILE:
-            if self.input_mode == DataMode.NIFTI_FILE:
-                logging.info(
-                    f"Saving segmentation to Nifti file {output_file} with affine/ header from reference file {reference_file}")
-                ref = nib.load(reference_file)
-                affine, header = ref.affine, ref.header
-            else:
-                logging.info(
-                    f"Saving segmentation to Nifti file {output_file} with default affine np.exe(4) and None header")
-                affine, header = np.eye(4), None
+        data = {"segmentation": final_seg}
+        if self.config.output_whole_network:
+            data['output_whole_network'] = whole_out
+        if self.config.output_metastasis_network:
+            data['output_metastasis_network'] = enhancing_out
+        return data
 
-            segmentation_image = nib.Nifti1Image(
-                final_seg, affine, header)
-            nib.save(segmentation_image, output_file)
-            self._save_output_nifti(
-                final_seg, output_file, affine, header
-            )
-
-            if self.config.whole_network_outputs_file:
-                self._save_output_nifti(
-                    whole_out, self.config.whole_network_outputs_file, affine, header
-                )
-
-            if self.config.metastasis_network_outputs_file:
-                self._save_output_nifti(
-                    enhancing_out, self.config.metastasis_network_outputs_file, affine, header
-                )
-        else:
-            # TODO: not sure if this is really desired
-            raise NotImplementedError(
-                "NumPy output mode not implemented yet!"
-            )
-
-    def _sliding_window_inference(self, output_file: str | Path, output_mode: DataMode) -> None:
+    def _sliding_window_inference(self) -> None | Dict[str, np.ndarray]:
         inferer = SlidingWindowInferer(
             roi_size=self.config.crop_size,  # = patch_size
             sw_batch_size=self.config.sliding_window_batch_size,
@@ -306,8 +311,8 @@ class AuroraInferer():
         with torch.no_grad():
             self.model.eval()
             self.model = self.model.to(self.device)
-            # loop through batches
-            for data in tqdm(self.data_loader, 0):
+            # loop through batches, only 1 batch!
+            for data in self.data_loader:
                 inputs = data["images"].to(self.device)
 
                 outputs = inferer(inputs, self.model)
@@ -317,7 +322,7 @@ class AuroraInferer():
                         outputs, data, inferer
                     )
 
-                # generate segmentation nifti
+                # generate segmentation nifti # TODO improve
                 try:
                     reference_file = data["t1c"][0]
                 except:
@@ -328,30 +333,29 @@ class AuroraInferer():
                     else:
                         FileNotFoundError("No reference file found!")
 
-                self._save_output(
-                    output_file=output_file,
-                    output_mode=output_mode,
+                postprocessed_data = self._post_process(
                     reference_file=reference_file,
                     onehot_model_outputs_CHWD=outputs,
                 )
+                if self.config.output_mode == DataMode.NUMPY:
+                    return postprocessed_data
+                else:
+                    self._save_as_nifti(
+                        postproc_data=postprocessed_data,
+                        reference_file=reference_file)
+                    return
 
-    def infer(self, output_file: str | Path = "seg.nii.gz", output_mode: DataMode = DataMode.NIFTI_FILE) -> None:
-        self.device = self._configure_device()
-        logging.info("Setting up Dataloader")
-        self.data_loader = self._get_data_loader()
-        logging.info("Loading Model and weights")
-        self.model = self._get_model()
-
+    def infer(self) -> None:
         logging.info(f"Running inference on {self.device}")
-        return self._infer(output_file, output_mode)
+        return self._infer()
 
     def _configure_device(self) -> torch.device:
         device = torch.device("cpu")
         logging.info(f"Using device: {device}")
         return device
 
-    def _infer(self, output_file: str | Path, output_mode: DataMode) -> None:
-        return self._sliding_window_inference(output_file=output_file, output_mode=output_mode)
+    def _infer(self) -> None:
+        return self._sliding_window_inference()
 
 
 ####################
@@ -363,10 +367,9 @@ class AuroraGPUInferer(AuroraInferer):
                  config: AuroraInfererConfig,
                  cuda_devices: str = "0",
                  ) -> None:
-        super().__init__(config=config)
-
-        # GPUInferer specific variables
         self.cuda_devices = cuda_devices
+
+        super().__init__(config=config)
 
     def _configure_device(self) -> torch.device:
 
