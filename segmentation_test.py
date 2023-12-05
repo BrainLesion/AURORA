@@ -57,4 +57,4 @@ def gpu_np():
 
 
 if __name__ == "__main__":
-    cpu_nifti()
+    gpu_nifti()

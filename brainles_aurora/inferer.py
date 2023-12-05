@@ -4,7 +4,7 @@ import logging
 import os
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
-
+from datetime import datetime
 import monai
 import nibabel as nib
 import numpy as np
@@ -15,9 +15,8 @@ from monai.networks.nets import BasicUNet
 from monai.transforms import (Compose, EnsureChannelFirstd, Lambdad,
                               LoadImageD, RandGaussianNoised,
                               ScaleIntensityRangePercentilesd, ToTensord)
-from path import Path
+from pathlib import Path
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 from brainles_aurora.aux import turbo_path
 from brainles_aurora.constants import (IMGS_TO_MODE_DICT, DataMode,
@@ -67,12 +66,15 @@ class AuroraInferer():
     def __init__(self, config: AuroraInfererConfig) -> None:
         self.config = config
 
+        self.output_folder = Path(os.path.abspath(self.config.output_folder)) / f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self.output_folder.mkdir(exist_ok=True, parents=True)
         # setup
         self._setup_logger()
 
         logging.info(
             f"Initialized {self.__class__.__name__}")
-
+        # setup output folder
+        
         self.images = self._validate_images()
         self.mode = self._determine_inference_mode()
 
@@ -90,7 +92,7 @@ class AuroraInferer():
             encoding='utf-8',
             handlers=[
                 logging.StreamHandler(),
-                logging.FileHandler('aurora_inferer.log')
+                logging.FileHandler(self.output_folder / "aurora_inferer.log")
             ]
         )
 
@@ -253,25 +255,16 @@ class AuroraInferer():
                 f"Writing NIFTI output after NumPy input, using default affine=np.eye(4) and header=None")
             affine, header = np.eye(4), None
 
-        # setup directory
-        output_folder = Path(os.path.abspath(self.config.output_folder))
-        output_folder.mkdir(exist_ok=True, parents=True)
-
-        logging.info(f"Output folder set to {output_folder}")
+        logging.info(f"Output folder set to {self.output_folder}")
 
         # save niftis
         for key, data in postproc_data.items():
-            output_file = output_folder / f"{key}.nii.gz"
+            output_file = self.output_folder / f"{key}.nii.gz"
             output_image = nib.Nifti1Image(data, affine, header)
             nib.save(output_image, output_file)
             logging.info(f"Saved {key} to {output_file}")
 
-    def _post_process(self,
-                      output_mode: DataMode,
-                      onehot_model_outputs_CHWD
-                      ) -> Dict[str, np.ndarray]:
-        logging.info(f"Saving output in mode: {output_mode}")
-
+    def _post_process(self, onehot_model_outputs_CHWD: torch.Tensor) -> Dict[str, np.ndarray]:
         # create segmentations
         activated_outputs = (
             (onehot_model_outputs_CHWD[0][:, :, :,
@@ -334,7 +327,6 @@ class AuroraInferer():
                         FileNotFoundError("No reference file found!")
 
                 postprocessed_data = self._post_process(
-                    reference_file=reference_file,
                     onehot_model_outputs_CHWD=outputs,
                 )
                 if self.config.output_mode == DataMode.NUMPY:
