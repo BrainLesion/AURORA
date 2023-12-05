@@ -1,7 +1,7 @@
 
 import logging
 import os
-from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import monai
@@ -30,38 +30,28 @@ if not os.path.exists(MODEL_WEIGHTS_DIR):
     download_model_weights(target_folder=LIB_ABSPATH)
 
 
+@dataclass
+class AuroraInfererConfig:
+    t1: str | Path | np.ndarray | None = None
+    t1c: str | Path | np.ndarray | None = None
+    t2: str | Path | np.ndarray | None = None
+    fla: str | Path | np.ndarray | None = None
+    tta: bool = True
+    sliding_window_batch_size: int = 1
+    workers: int = 0
+    threshold: float = 0.5
+    sliding_window_overlap: float = 0.5
+    crop_size: Tuple[int, int, int] = (192, 192, 32)
+    model_selection: ModelSelection = ModelSelection.BEST
+    whole_network_outputs_file: str | None = None
+    metastasis_network_outputs_file: str | None = None
+    log_level: int | str = logging.INFO
+
+
 class AuroraInferer():
 
-    def __init__(self,
-                 t1: str | Path | np.ndarray | None = None,
-                 t1c: str | Path | np.ndarray | None = None,
-                 t2: str | Path | np.ndarray | None = None,
-                 fla: str | Path | np.ndarray | None = None,
-                 tta: bool = True,
-                 sliding_window_batch_size: int = 1,
-                 workers: int = 0,
-                 threshold: float = 0.5,
-                 sliding_window_overlap: float = 0.5,
-                 crop_size: Tuple[int, int, int] = (192, 192, 32),
-                 model_selection: ModelSelection = ModelSelection.BEST,
-                 whole_network_outputs_file: str | None = None,
-                 metastasis_network_outputs_file: str | None = None,
-                 log_level: int | str = logging.INFO,
-                 ) -> None:
-        self.t1 = t1
-        self.t1c = t1c
-        self.t2 = t2
-        self.fla = fla
-        self.tta = tta
-        self.sliding_window_batch_size = sliding_window_batch_size
-        self.workers = workers
-        self.threshold = threshold
-        self.sliding_window_overlap = sliding_window_overlap
-        self.crop_size = crop_size
-        self.model_selection = model_selection
-        self.whole_network_outputs_file = whole_network_outputs_file
-        self.metastasis_network_outputs_file = metastasis_network_outputs_file
-        self.log_level = log_level
+    def __init__(self, config: AuroraInfererConfig) -> None:
+        self.config = config
 
         # setup
         self._setup_logger()
@@ -75,7 +65,7 @@ class AuroraInferer():
         logging.basicConfig(
             format='%(asctime)s %(levelname)s: %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
-            level=self.log_level,
+            level=self.config.log_level,
             encoding='utf-8',
             handlers=[
                 logging.StreamHandler(),
@@ -88,24 +78,24 @@ class AuroraInferer():
             if data is None:
                 return None
             if isinstance(data, np.ndarray):
-                self.input_mode = DataMode.NUMPY
+                self.config.input_mode = DataMode.NUMPY
                 return data.astype(np.float32)
             if not os.path.exists(data):
                 raise FileNotFoundError(f"File {data} not found")
             if not (data.endswith(".nii.gz") or data.endswith(".nii")):
                 raise ValueError(
                     f"File {data} must be a nifti file with extension .nii or .nii.gz")
-            self.input_mode = DataMode.NIFTI_FILE
+            self.config.input_mode = DataMode.NIFTI_FILE
             return turbo_path(data)
 
         images = [_validate_img(img)
-                  for img in [self.t1, self.t1c, self.t2, self.fla]]
+                  for img in [self.config.t1, self.config.t1c, self.config.t2, self.config.fla]]
 
         assert len(set(map(type, [img for img in images if img is not None]))
                    ) == 1, f"All passed images must be of the same type! Accepted Input types: {list(DataMode)}"
 
         logging.info(
-            f"Successfully validated input images. Input mode: {self.input_mode}")
+            f"Successfully validated input images. Input mode: {self.config.input_mode}")
         return images
 
     def _determine_inference_mode(self) -> InferenceMode:
@@ -129,7 +119,7 @@ class AuroraInferer():
         # init transforms
         transforms = [
             LoadImageD(keys=["images"]
-                       ) if self.input_mode == DataMode.NIFTI_FILE else None,
+                       ) if self.config.input_mode == DataMode.NIFTI_FILE else None,
             EnsureChannelFirstd(keys="images") if len(
                 self._get_not_none_files()) == 1 else None,
             Lambdad(["images"], np.nan_to_num),
@@ -151,13 +141,13 @@ class AuroraInferer():
 
         # init data dictionary
         data = {}
-        if self.t1 is not None:
+        if self.config.t1 is not None:
             data['t1'] = self.t1
-        if self.t1c is not None:
+        if self.config.t1c is not None:
             data['t1c'] = self.t1c
-        if self.t2 is not None:
+        if self.config.t2 is not None:
             data['t2'] = self.t2
-        if self.fla is not None:
+        if self.config.fla is not None:
             data['fla'] = self.fla
         # method returns files in standard order T1 T1C T2 FLAIR
         data['images'] = self._get_not_none_files()
@@ -171,7 +161,7 @@ class AuroraInferer():
         data_loader = DataLoader(
             infererence_ds,
             batch_size=1,
-            num_workers=self.workers,
+            num_workers=self.config.workers,
             collate_fn=list_data_collate,
             shuffle=False,
         )
@@ -195,12 +185,12 @@ class AuroraInferer():
         weights = os.path.join(
             MODEL_WEIGHTS_DIR,
             self.mode,
-            f"{self.model_selection}.tar",
+            f"{self.config.model_selection}.tar",
         )
 
         if not os.path.exists(weights):
             raise NotImplementedError(
-                f"No weights found for model {self.mode} and selection {self.model_selection}")
+                f"No weights found for model {self.mode} and selection {self.config.model_selection}")
 
         checkpoint = torch.load(weights, map_location=self.device)
         model.load_state_dict(checkpoint["model_state"])
@@ -242,7 +232,7 @@ class AuroraInferer():
                                           :].sigmoid()).detach().cpu().numpy()
         )
 
-        binarized_outputs = activated_outputs >= self.threshold
+        binarized_outputs = activated_outputs >= self.config.threshold
 
         binarized_outputs = binarized_outputs.astype(np.uint8)
 
@@ -257,7 +247,7 @@ class AuroraInferer():
         enhancing_out = binarized_outputs[1]
 
         if output_mode == DataMode.NIFTI_FILE:
-            if self.input_mode == DataMode.NIFTI_FILE:
+            if self.config.input_mode == DataMode.NIFTI_FILE:
                 logging.info(
                     f"Saving segmentation to Nifti file {output_file} with affine/ header from reference file {reference_file}")
                 ref = nib.load(reference_file)
@@ -300,11 +290,11 @@ class AuroraInferer():
 
     def _sliding_window_inference(self, output_file: str | Path, output_mode: DataMode) -> None:
         inferer = SlidingWindowInferer(
-            roi_size=self.crop_size,  # = patch_size
-            sw_batch_size=self.sliding_window_batch_size,
+            roi_size=self.config.crop_size,  # = patch_size
+            sw_batch_size=self.config.sliding_window_batch_size,
             sw_device=self.device,
             device=self.device,
-            overlap=self.sliding_window_overlap,
+            overlap=self.config.sliding_window_overlap,
             mode="gaussian",
             padding_mode="replicate",
         )
@@ -316,7 +306,7 @@ class AuroraInferer():
                 inputs = data["images"]
 
                 outputs = inferer(inputs, self.model)
-                if self.tta:
+                if self.config.tta:
                     outputs = self._apply_test_time_augmentations(
                         data, inferer
                     )
@@ -340,6 +330,7 @@ class AuroraInferer():
                 )
 
     def infer(self, output_file: str | Path = "seg.nii.gz", output_mode: DataMode = DataMode.NIFTI_FILE) -> None:
+        self.device = self._configure_device()
         logging.info("Setting up Dataloader")
         self.data_loader = self._get_data_loader()
         logging.info("Loading Model and weights")
@@ -349,7 +340,9 @@ class AuroraInferer():
         return self._infer(output_file, output_mode)
 
     def _configure_device(self) -> torch.device:
-        return torch.device("cpu")
+        device = torch.device("cpu")
+        logging.info(f"Using device: {device}")
+        return device
 
     def _infer(self, output_file: str | Path, output_mode: DataMode) -> None:
         return self._sliding_window_inference(output_file=output_file, output_mode=output_mode)
@@ -361,41 +354,13 @@ class AuroraInferer():
 class AuroraGPUInferer(AuroraInferer):
 
     def __init__(self,
-                 t1: str | Path | np.ndarray | None = None,
-                 t1c: str | Path | np.ndarray | None = None,
-                 t2: str | Path | np.ndarray | None = None,
-                 fla: str | Path | np.ndarray | None = None,
+                 config: AuroraInfererConfig,
                  cuda_devices: str = "0",
-                 tta: bool = True,
-                 sliding_window_batch_size: int = 1,
-                 workers: int = 0,
-                 threshold: float = 0.5,
-                 sliding_window_overlap: float = 0.5,
-                 crop_size: Tuple[int, int, int] = (192, 192, 32),
-                 model_selection: ModelSelection = ModelSelection.BEST,
-                 whole_network_outputs_file: str | None = None,
-                 metastasis_network_outputs_file: str | None = None,
-                 log_level: int | str = logging.INFO,
                  ) -> None:
-        super().__init__(
-            t1=t1,
-            t1c=t1c,
-            t2=t2,
-            fla=fla,
-            tta=tta,
-            sliding_window_batch_size=sliding_window_batch_size,
-            workers=workers,
-            threshold=threshold,
-            sliding_window_overlap=sliding_window_overlap,
-            crop_size=crop_size,
-            model_selection=model_selection,
-            whole_network_outputs_file=whole_network_outputs_file,
-            metastasis_network_outputs_file=metastasis_network_outputs_file,
-            log_level=log_level,
-        )
+        super().__init__(config=config)
+
         # GPUInferer specific variables
         self.cuda_devices = cuda_devices
-        self.device = self._configure_device()
 
     def _configure_device(self) -> torch.device:
 
