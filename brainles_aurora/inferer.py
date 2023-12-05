@@ -25,7 +25,7 @@ from brainles_aurora.download import download_model_weights
 
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_WEIGHTS_DIR = os.path.join(LIB_ABSPATH, "model_weights")
+MODEL_WEIGHTS_DIR = Path(LIB_ABSPATH) / "model_weights"
 if not os.path.exists(MODEL_WEIGHTS_DIR):
     download_model_weights(target_folder=LIB_ABSPATH)
 
@@ -78,24 +78,26 @@ class AuroraInferer():
             if data is None:
                 return None
             if isinstance(data, np.ndarray):
-                self.config.input_mode = DataMode.NUMPY
+                self.input_mode = DataMode.NUMPY
                 return data.astype(np.float32)
             if not os.path.exists(data):
                 raise FileNotFoundError(f"File {data} not found")
             if not (data.endswith(".nii.gz") or data.endswith(".nii")):
                 raise ValueError(
                     f"File {data} must be a nifti file with extension .nii or .nii.gz")
-            self.config.input_mode = DataMode.NIFTI_FILE
+            self.input_mode = DataMode.NIFTI_FILE
             return turbo_path(data)
 
         images = [_validate_img(img)
                   for img in [self.config.t1, self.config.t1c, self.config.t2, self.config.fla]]
 
-        assert len(set(map(type, [img for img in images if img is not None]))
-                   ) == 1, f"All passed images must be of the same type! Accepted Input types: {list(DataMode)}"
+        # make sure all inputs have the same type
+        unique_types = set(filter(None, map(type, images)))
+        assert len(
+            unique_types) == 1, f"All passed images must be of the same type! Accepted Input types: {list(DataMode)}"
 
         logging.info(
-            f"Successfully validated input images. Input mode: {self.config.input_mode}")
+            f"Successfully validated input images. Input mode: {self.input_mode}")
         return images
 
     def _determine_inference_mode(self) -> InferenceMode:
@@ -119,7 +121,7 @@ class AuroraInferer():
         # init transforms
         transforms = [
             LoadImageD(keys=["images"]
-                       ) if self.config.input_mode == DataMode.NIFTI_FILE else None,
+                       ) if self.input_mode == DataMode.NIFTI_FILE else None,
             EnsureChannelFirstd(keys="images") if len(
                 self._get_not_none_files()) == 1 else None,
             Lambdad(["images"], np.nan_to_num),
@@ -135,20 +137,13 @@ class AuroraInferer():
             ),
             ToTensord(keys=["images"]),
         ]
-        # filter None transforms that may be included due to conditioal transforms above
+        # Filter None transforms
         transforms = list(filter(None, transforms))
         inference_transforms = Compose(transforms)
 
-        # init data dictionary
-        data = {}
-        if self.config.t1 is not None:
-            data['t1'] = self.config.t1
-        if self.config.t1c is not None:
-            data['t1c'] = self.config.t1c
-        if self.config.t2 is not None:
-            data['t2'] = self.config.t2
-        if self.config.fla is not None:
-            data['fla'] = self.config.fla
+        # Initialize data dictionary
+        data = {key: getattr(self.config, key) for key in [
+            "t1", "t1c", "t2", "fla"] if getattr(self.config, key) is not None}
         # method returns files in standard order T1 T1C T2 FLAIR
         data['images'] = self._get_not_none_files()
 
@@ -178,64 +173,72 @@ class AuroraInferer():
             act="mish",
         )
 
-        model = torch.nn.DataParallel(model)
+        model = torch.nn.parallel.DataParallel(model)
         model = model.to(self.device)
 
         # load weights
-        weights = os.path.join(
+        weights_path = os.path.join(
             MODEL_WEIGHTS_DIR,
             self.mode,
             f"{self.config.model_selection}.tar",
         )
 
-        if not os.path.exists(weights):
+        if not os.path.exists(weights_path):
             raise NotImplementedError(
                 f"No weights found for model {self.mode} and selection {self.config.model_selection}")
 
-        checkpoint = torch.load(weights, map_location=self.device)
+        checkpoint = torch.load(weights_path, map_location=self.device)
         model.load_state_dict(checkpoint["model_state"])
 
         return model
 
-    # TODO types!
-    def _apply_test_time_augmentations(self, outputs, data: Dict, inferer: SlidingWindowInferer) -> torch.Tensor:
+    def _apply_test_time_augmentations(self, outputs: torch.Tensor, data: Dict, inferer: SlidingWindowInferer) -> torch.Tensor:
         n = 1.0
         for _ in range(4):
             # test time augmentations
-            _img = RandGaussianNoised(keys="images", prob=1.0, std=0.001)(data)[
-                "images"
-            ]
+            _img = RandGaussianNoised(
+                keys="images", prob=1.0, std=0.001)(data)["images"]
 
             output = inferer(_img, self.model)
             outputs = outputs + output
-            n = n + 1.0
+            n += 1.0
             for dims in [[2], [3]]:
                 flip_pred = inferer(torch.flip(_img, dims=dims), self.model)
 
                 output = torch.flip(flip_pred, dims=dims)
                 outputs = outputs + output
-                n = n + 1.0
+                n += 1.0
         outputs = outputs / n
         return outputs
 
     def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
         return [img for img in self.images if img is not None]
 
-    def _save_ouput(self,
-                    output_file: str | Path,
-                    output_mode: DataMode,
-                    reference_file: str | Path,
-                    onehot_model_outputs_CHWD
-                    ) -> None | Dict[str, np.ndarray]:
+    def _save_output_nifti(self,
+                           output: np.ndarray,
+                           output_file: str | Path,
+                           affine: np.ndarray,
+                           header: nib.Nifti1Header | None) -> None:
+        logging.info(
+            f"Saving outputs to Nifti file {output_file}")
+        output_file = Path(os.path.abspath(output_file))
+        output_image = nib.Nifti1Image(output, affine, header)
+        nib.save(output_image, output_file)
+
+    def _save_output(self,
+                     output_file: str | Path,
+                     output_mode: DataMode,
+                     reference_file: str | Path,
+                     onehot_model_outputs_CHWD
+                     ) -> None | Dict[str, np.ndarray]:
         logging.info(f"Saving output in mode: {output_mode}")
-        # generate segmentation
+
+        # create segmentations
         activated_outputs = (
             (onehot_model_outputs_CHWD[0][:, :, :,
                                           :].sigmoid()).detach().cpu().numpy()
         )
-
         binarized_outputs = activated_outputs >= self.config.threshold
-
         binarized_outputs = binarized_outputs.astype(np.uint8)
 
         whole_metastasis = binarized_outputs[0]
@@ -248,8 +251,9 @@ class AuroraInferer():
         whole_out = binarized_outputs[0]
         enhancing_out = binarized_outputs[1]
 
+        # save segmentations
         if output_mode == DataMode.NIFTI_FILE:
-            if self.config.input_mode == DataMode.NIFTI_FILE:
+            if self.input_mode == DataMode.NIFTI_FILE:
                 logging.info(
                     f"Saving segmentation to Nifti file {output_file} with affine/ header from reference file {reference_file}")
                 ref = nib.load(reference_file)
@@ -262,37 +266,24 @@ class AuroraInferer():
             segmentation_image = nib.Nifti1Image(
                 final_seg, affine, header)
             nib.save(segmentation_image, output_file)
+            self._save_output_nifti(
+                final_seg, output_file, affine, header
+            )
 
             if self.config.whole_network_outputs_file:
-                logging.info(
-                    f"Saving whole network outputs to Nifti file {self.config.whole_network_outputs_file}")
-                self.config.whole_network_outputs_file = Path(
-                    os.path.abspath(self.config.whole_network_outputs_file))
-
-                whole_out_image = nib.Nifti1Image(
-                    whole_out, affine, header)
-                nib.save(whole_out_image, self.config.whole_network_outputs_file)
-
-            if self.config.metastasis_network_outputs_file:
-                logging.info(
-                    f"Saving metastasis network outputs to Nifti file {self.config.metastasis_network_outputs_file}")
-                self.config.metastasis_network_outputs_file = Path(
-                    os.path.abspath(self.config.metastasis_network_outputs_file)
+                self._save_output_nifti(
+                    whole_out, self.config.whole_network_outputs_file, affine, header
                 )
 
-                enhancing_out_image = nib.Nifti1Image(
-                    enhancing_out, affine, header)
-                nib.save(enhancing_out_image,
-                         self.config.metastasis_network_outputs_file)
+            if self.config.metastasis_network_outputs_file:
+                self._save_network_output(
+                    enhancing_out, self.config.whole_network_outputs_file, affine, header
+                )
         else:
+            # TODO: not sure if this is really desired
             raise NotImplementedError(
-                "Numpy output mode not implemented yet!"
+                "NumPy output mode not implemented yet!"
             )
-            # return {
-            #     'seg': final_seg,
-            #     'whole_out': whole_out,
-            #     'enhancing_out': enhancing_out,
-            # }
 
     def _sliding_window_inference(self, output_file: str | Path, output_mode: DataMode) -> None:
         inferer = SlidingWindowInferer(
@@ -327,9 +318,9 @@ class AuroraInferer():
                     except:
                         reference_file = data["t1"][0]
                     else:
-                        FileNotFoundError("no reference file found!")
+                        FileNotFoundError("No reference file found!")
 
-                self._save_ouput(
+                self._save_output(
                     output_file=output_file,
                     output_mode=output_mode,
                     reference_file=reference_file,
