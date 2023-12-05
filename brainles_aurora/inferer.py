@@ -173,9 +173,6 @@ class AuroraInferer():
             act="mish",
         )
 
-        model = torch.nn.parallel.DataParallel(model)
-        model = model.to(self.device)
-
         # load weights
         weights_path = os.path.join(
             MODEL_WEIGHTS_DIR,
@@ -187,7 +184,17 @@ class AuroraInferer():
             raise NotImplementedError(
                 f"No weights found for model {self.mode} and selection {self.config.model_selection}")
 
+        model = model.to(self.device)
         checkpoint = torch.load(weights_path, map_location=self.device)
+        
+        # The models were trained using dataparallel, so we need to remove the 'module.' prefix 
+        # for cpu inference since DataParallel only works on GPU
+        if self.device == torch.device("cpu"):
+            if 'module.' in list(checkpoint["model_state"].keys())[0]:
+                checkpoint["model_state"] = {k.replace('module.', ''): v for k, v in checkpoint["model_state"].items()}
+        else:
+            model = torch.nn.parallel.DataParallel(model)
+        
         model.load_state_dict(checkpoint["model_state"])
 
         return model
@@ -298,9 +305,10 @@ class AuroraInferer():
 
         with torch.no_grad():
             self.model.eval()
+            self.model = self.model.to(self.device)
             # loop through batches
             for data in tqdm(self.data_loader, 0):
-                inputs = data["images"]
+                inputs = data["images"].to(self.device)
 
                 outputs = inferer(inputs, self.model)
                 if self.config.tta:
