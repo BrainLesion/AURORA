@@ -73,6 +73,7 @@ class AbstractInferer(ABC):
         pass  # TODO implement
 
     def _setup_logger(self) -> None:
+        self.log_path = self.output_folder / "aurora_inferer.log"
         logging.basicConfig(
             format='%(asctime)s %(levelname)s: %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
@@ -80,9 +81,10 @@ class AbstractInferer(ABC):
             encoding='utf-8',
             handlers=[
                 logging.StreamHandler(),
-                logging.FileHandler(self.output_folder / "aurora_inferer.log")
+                logging.FileHandler(self.log_path)
             ]
         )
+        logging.info(f"Logging to: {self.log_path}")
 
     @abstractmethod
     def infer(self):
