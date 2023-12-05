@@ -276,8 +276,8 @@ class AuroraInferer():
                 )
 
             if self.config.metastasis_network_outputs_file:
-                self._save_network_output(
-                    enhancing_out, self.config.whole_network_outputs_file, affine, header
+                self._save_output_nifti(
+                    enhancing_out, self.config.metastasis_network_outputs_file, affine, header
                 )
         else:
             # TODO: not sure if this is really desired
