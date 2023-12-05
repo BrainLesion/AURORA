@@ -32,17 +32,22 @@ def load_np_from_nifti(request):
     return _load_np_from_nifti
 
 
-def test_invalid_inference_mode(t1c_path, t2_path, fla_path):
+def test_no_inputs():
     """Might change with new models, rather a dummy test"""
     with pytest.raises(AssertionError):
+        config = AuroraInfererConfig()
+        _ = AuroraInferer(config=config)
+
+
+def test_invalid_inference_mode(t1c_path, t2_path, fla_path):
+    """Might change with new models, rather a dummy test"""
+    with pytest.raises(NotImplementedError):
         config = AuroraInfererConfig(t1c=t1c_path, t2=t2_path, fla=fla_path)
-        inferer = AuroraInferer(config=config)
-        inferer.infer(output_file="your_segmentation_file.nii.gz")
+        _ = AuroraInferer(config=config)
 
 
 def test_mixed_input_types(t1_path, t1c_path, load_np_from_nifti):
     with pytest.raises(AssertionError):
         config = AuroraInfererConfig(
             t1=t1_path, t1c=load_np_from_nifti(t1c_path))
-        inferer = AuroraInferer(config=config)
-        inferer.infer(output_file="your_segmentation_file.nii.gz")
+        _ = AuroraInferer(config=config)
