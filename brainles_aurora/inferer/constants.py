@@ -2,19 +2,19 @@ from enum import Enum
 
 
 class InferenceMode(str, Enum):
-    T1_T1C_T2_FLA = 't1-t1c-t2-fla'
-    T1_T1C_FLA = 't1-t1c-fla'
-    T1_T1C = 't1-t1c'
-    T1C_FLA = 't1c-fla'
-    T1C_O = 't1c-o'
-    FLA_O = 'fla-o'
-    T1_O = 't1-o'
+    T1_T1C_T2_FLA = "t1-t1c-t2-fla"
+    T1_T1C_FLA = "t1-t1c-fla"
+    T1_T1C = "t1-t1c"
+    T1C_FLA = "t1c-fla"
+    T1C_O = "t1c-o"
+    FLA_O = "fla-o"
+    T1_O = "t1-o"
 
 
 class ModelSelection(str, Enum):
-    BEST = 'best'
-    LAST = 'last'
-    VANILLA = 'vanilla'
+    BEST = "best"
+    LAST = "last"
+    VANILLA = "vanilla"
 
 
 class DataMode(str, Enum):

@@ -1,9 +1,9 @@
 # copied from https://github.com/Nordgaren/Github-Folder-Downloader/blob/master/gitdl.py
 import os
-from github import Github, Repository, ContentFile
-import requests
-
 import shutil as sh
+
+import requests
+from github import ContentFile, Github, Repository
 
 
 def download(c: ContentFile, out: str):

@@ -5,7 +5,7 @@ from typing import Tuple
 
 import numpy as np
 
-from brainles_aurora.constants import DataMode, ModelSelection
+from brainles_aurora.inferer.constants import DataMode, ModelSelection
 
 
 @dataclass
@@ -13,14 +13,14 @@ class BaseConfig:
     output_mode: DataMode = DataMode.NIFTI_FILE
     output_folder: str | Path = "aurora_output"
     log_level: int | str = logging.INFO
-
-
-@dataclass
-class AuroraInfererConfig(BaseConfig):
     t1: str | Path | np.ndarray | None = None
     t1c: str | Path | np.ndarray | None = None
     t2: str | Path | np.ndarray | None = None
     fla: str | Path | np.ndarray | None = None
+
+
+@dataclass
+class AuroraInfererConfig(BaseConfig):
     output_whole_network: bool = False
     output_metastasis_network: bool = False
     tta: bool = True

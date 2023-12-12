@@ -12,48 +12,51 @@ import torch
 from monai.data import list_data_collate
 from monai.inferers import SlidingWindowInferer
 from monai.networks.nets import BasicUNet
-from monai.transforms import (Compose, EnsureChannelFirstd, Lambdad,
-                              LoadImageD, RandGaussianNoised,
-                              ScaleIntensityRangePercentilesd, ToTensord)
+from monai.transforms import (
+    Compose,
+    EnsureChannelFirstd,
+    Lambdad,
+    LoadImageD,
+    RandGaussianNoised,
+    ScaleIntensityRangePercentilesd,
+    ToTensord,
+)
 from torch.utils.data import DataLoader
 
+from brainles_aurora.inferer.constants import IMGS_TO_MODE_DICT, DataMode, InferenceMode
 from brainles_aurora.aux import turbo_path
-from brainles_aurora.constants import (IMGS_TO_MODE_DICT, DataMode,
-                                       InferenceMode)
-from brainles_aurora.dataclasses import BaseConfig, AuroraInfererConfig
-from brainles_aurora.download import download_model_weights
+from brainles_aurora.inferer.dataclasses import AuroraInfererConfig, BaseConfig
+from brainles_aurora.inferer.download import download_model_weights
 
 LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_WEIGHTS_DIR = Path(LIB_ABSPATH) / "model_weights"
+MODEL_WEIGHTS_DIR = Path(LIB_ABSPATH).parent / "model_weights"
 if not MODEL_WEIGHTS_DIR.exists():
     download_model_weights(target_folder=LIB_ABSPATH)
 
 
 class AbstractInferer(ABC):
-
     def __init__(self, config: BaseConfig) -> None:
         self.config = config
 
         # setup output folder
-        self.output_folder = Path(os.path.abspath(
-            self.config.output_folder)) / f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self.output_folder = (
+            Path(os.path.abspath(self.config.output_folder))
+            / f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        )
         self.output_folder.mkdir(exist_ok=True, parents=True)
 
         # setup logger
         self._setup_logger()
 
     def _setup_logger(self) -> None:
-        self.log_path = self.output_folder / "aurora_inferer.log"
+        self.log_path = self.output_folder / f"{self.__class__.__name__}.log"
         logging.basicConfig(
-            format='%(asctime)s %(levelname)s: %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
+            format="%(asctime)s %(levelname)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
             level=self.config.log_level,
-            encoding='utf-8',
-            handlers=[
-                logging.StreamHandler(),
-                logging.FileHandler(self.log_path)
-            ]
+            encoding="utf-8",
+            handlers=[logging.StreamHandler(), logging.FileHandler(self.log_path)],
         )
         logging.info(f"Logging to: {self.log_path}")
 
@@ -62,23 +65,12 @@ class AbstractInferer(ABC):
         pass
 
 
-class DockerInferer(AbstractInferer):
-
-    def __init__(self, config: BaseConfig) -> None:
-        super().__init__(config)
-
-    def infer(self):
-        return super().infer()
-
-
 class AuroraInferer(AbstractInferer):
-
     def __init__(self, config: AuroraInfererConfig) -> None:
         # TODO move weights path / download to config and setup
         super().__init__(config=config)
 
-        logging.info(
-            f"Initialized {self.__class__.__name__}")
+        logging.info(f"Initialized {self.__class__.__name__}")
 
         self.images = self._validate_images()
         self.mode = self._determine_inference_mode()
@@ -90,7 +82,9 @@ class AuroraInferer(AbstractInferer):
         self.model = self._get_model()
 
     def _validate_images(self) -> List[np.ndarray | None] | List[Path | None]:
-        def _validate_image(data: str | Path | np.ndarray | None) -> np.ndarray | Path | None:
+        def _validate_image(
+            data: str | Path | np.ndarray | None,
+        ) -> np.ndarray | Path | None:
             if data is None:
                 return None
             if isinstance(data, np.ndarray):
@@ -100,24 +94,33 @@ class AuroraInferer(AbstractInferer):
                 raise FileNotFoundError(f"File {data} not found")
             if not (data.endswith(".nii.gz") or data.endswith(".nii")):
                 raise ValueError(
-                    f"File {data} must be a nifti file with extension .nii or .nii.gz")
+                    f"File {data} must be a nifti file with extension .nii or .nii.gz"
+                )
             self.input_mode = DataMode.NIFTI_FILE
             return turbo_path(data)
 
-        images = [_validate_image(img)
-                  for img in [self.config.t1, self.config.t1c, self.config.t2, self.config.fla]]
+        images = [
+            _validate_image(img)
+            for img in [
+                self.config.t1,
+                self.config.t1c,
+                self.config.t2,
+                self.config.fla,
+            ]
+        ]
 
         # make sure all inputs have the same type
         unique_types = set(map(type, filter(lambda x: x is not None, images)))
-        assert len(
-            unique_types) == 1, f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
+        assert (
+            len(unique_types) == 1
+        ), f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
 
         logging.info(
-            f"Successfully validated input images. Input mode: {self.input_mode}")
+            f"Successfully validated input images. Input mode: {self.input_mode}"
+        )
         return images
 
     def _determine_inference_mode(self) -> InferenceMode:
-
         _t1, _t1c, _t2, _fla = [img is not None for img in self.images]
         logging.info(
             f"Received files: T1: {_t1}, T1C: {_t1c}, T2: {_t2}, FLAIR: {_fla}"
@@ -128,7 +131,8 @@ class AuroraInferer(AbstractInferer):
 
         if mode is None:
             raise NotImplementedError(
-                "No model implemented for this combination of images")
+                "No model implemented for this combination of images"
+            )
 
         logging.info(f"Inference mode: {mode}")
         return mode
@@ -136,10 +140,12 @@ class AuroraInferer(AbstractInferer):
     def _get_data_loader(self) -> torch.utils.data.DataLoader:
         # init transforms
         transforms = [
-            LoadImageD(keys=["images"]
-                       ) if self.input_mode == DataMode.NIFTI_FILE else None,
-            EnsureChannelFirstd(keys="images") if len(
-                self._get_not_none_files()) == 1 else None,
+            LoadImageD(keys=["images"])
+            if self.input_mode == DataMode.NIFTI_FILE
+            else None,
+            EnsureChannelFirstd(keys="images")
+            if len(self._get_not_none_files()) == 1
+            else None,
             Lambdad(["images"], np.nan_to_num),
             ScaleIntensityRangePercentilesd(
                 keys="images",
@@ -158,10 +164,13 @@ class AuroraInferer(AbstractInferer):
         inference_transforms = Compose(transforms)
 
         # Initialize data dictionary
-        data = {key: getattr(self.config, key) for key in [
-            "t1", "t1c", "t2", "fla"] if getattr(self.config, key) is not None}
+        data = {
+            key: getattr(self.config, key)
+            for key in ["t1", "t1c", "t2", "fla"]
+            if getattr(self.config, key) is not None
+        }
         # method returns files in standard order T1 T1C T2 FLAIR
-        data['images'] = self._get_not_none_files()
+        data["images"] = self._get_not_none_files()
 
         # init dataset and dataloader
         infererence_ds = monai.data.Dataset(
@@ -198,7 +207,8 @@ class AuroraInferer(AbstractInferer):
 
         if not os.path.exists(weights_path):
             raise NotImplementedError(
-                f"No weights found for model {self.mode} and selection {self.config.model_selection}")
+                f"No weights found for model {self.mode} and selection {self.config.model_selection}"
+            )
 
         model = model.to(self.device)
         checkpoint = torch.load(weights_path, map_location=self.device)
@@ -206,9 +216,11 @@ class AuroraInferer(AbstractInferer):
         # The models were trained using DataParallel, hence we need to remove the 'module.' prefix
         # for cpu inference to enable checkpoint loading (since DataParallel is not usable for CPU)
         if self.device == torch.device("cpu"):
-            if 'module.' in list(checkpoint["model_state"].keys())[0]:
+            if "module." in list(checkpoint["model_state"].keys())[0]:
                 checkpoint["model_state"] = {
-                    k.replace('module.', ''): v for k, v in checkpoint["model_state"].items()}
+                    k.replace("module.", ""): v
+                    for k, v in checkpoint["model_state"].items()
+                }
         else:
             model = torch.nn.parallel.DataParallel(model)
 
@@ -216,12 +228,15 @@ class AuroraInferer(AbstractInferer):
 
         return model
 
-    def _apply_test_time_augmentations(self, outputs: torch.Tensor, data: Dict, inferer: SlidingWindowInferer) -> torch.Tensor:
+    def _apply_test_time_augmentations(
+        self, outputs: torch.Tensor, data: Dict, inferer: SlidingWindowInferer
+    ) -> torch.Tensor:
         n = 1.0
         for _ in range(4):
             # test time augmentations
-            _img = RandGaussianNoised(
-                keys="images", prob=1.0, std=0.001)(data)["images"]
+            _img = RandGaussianNoised(keys="images", prob=1.0, std=0.001)(data)[
+                "images"
+            ]
 
             output = inferer(_img, self.model)
             outputs = outputs + output
@@ -246,7 +261,8 @@ class AuroraInferer(AbstractInferer):
             affine, header = ref.affine, ref.header
         else:
             logging.warning(
-                f"Writing NIFTI output after NumPy input, using default affine=np.eye(4) and header=None")
+                f"Writing NIFTI output after NumPy input, using default affine=np.eye(4) and header=None"
+            )
             affine, header = np.eye(4), None
 
         logging.info(f"Output folder set to {self.output_folder}")
@@ -258,11 +274,12 @@ class AuroraInferer(AbstractInferer):
             nib.save(output_image, output_file)
             logging.info(f"Saved {key} to {output_file}")
 
-    def _post_process(self, onehot_model_outputs_CHWD: torch.Tensor) -> Dict[str, np.ndarray]:
+    def _post_process(
+        self, onehot_model_outputs_CHWD: torch.Tensor
+    ) -> Dict[str, np.ndarray]:
         # create segmentations
         activated_outputs = (
-            (onehot_model_outputs_CHWD[0][:, :, :,
-                                          :].sigmoid()).detach().cpu().numpy()
+            (onehot_model_outputs_CHWD[0][:, :, :, :].sigmoid()).detach().cpu().numpy()
         )
         binarized_outputs = activated_outputs >= self.config.threshold
         binarized_outputs = binarized_outputs.astype(np.uint8)
@@ -279,9 +296,9 @@ class AuroraInferer(AbstractInferer):
 
         data = {"segmentation": final_seg}
         if self.config.output_whole_network:
-            data['output_whole_network'] = whole_out
+            data["output_whole_network"] = whole_out
         if self.config.output_metastasis_network:
-            data['output_metastasis_network'] = enhancing_out
+            data["output_metastasis_network"] = enhancing_out
         return data
 
     def _sliding_window_inference(self) -> None | Dict[str, np.ndarray]:
@@ -335,21 +352,22 @@ class AuroraInferer(AbstractInferer):
 # GPU Inferer
 ####################
 class AuroraGPUInferer(AuroraInferer):
-
-    def __init__(self,
-                 config: AuroraInfererConfig,
-                 cuda_devices: str = "0",
-                 ) -> None:
+    def __init__(
+        self,
+        config: AuroraInfererConfig,
+        cuda_devices: str = "0",
+    ) -> None:
         self.cuda_devices = cuda_devices
 
         super().__init__(config=config)
 
     def _configure_device(self) -> torch.device:
-
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = self.cuda_devices
 
-        assert torch.cuda.is_available(), "No cuda device available while using GPUInferer"
+        assert (
+            torch.cuda.is_available()
+        ), "No cuda device available while using GPUInferer"
 
         device = torch.device("cuda")
         logging.info(f"Using device: {device}")

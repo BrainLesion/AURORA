@@ -4,12 +4,11 @@ import nibabel as nib
 import pytest
 import torch
 
-from brainles_aurora.inferer import (AbstractInferer, AuroraInferer,
-                                     AuroraInfererConfig, BaseConfig)
+from brainles_aurora.inferer.dataclasses import AuroraInfererConfig, BaseConfig
+from brainles_aurora.inferer.inferer import AbstractInferer, AuroraInferer
 
 
 class TestAuroraInferer:
-
     @pytest.fixture
     def t1_path(self):
         return "example_data/BraTS-MET-00110-000-t1n.nii.gz"
@@ -28,9 +27,7 @@ class TestAuroraInferer:
 
     @pytest.fixture
     def mock_config(self, t1_path, t1c_path, t2_path, fla_path):
-        return AuroraInfererConfig(
-            t1=t1_path, t1c=t1c_path, t2=t2_path, fla=fla_path
-        )
+        return AuroraInfererConfig(t1=t1_path, t1c=t1c_path, t2=t2_path, fla=fla_path)
 
     @pytest.fixture
     def mock_inferer(self, mock_config):
@@ -57,8 +54,7 @@ class TestAuroraInferer:
 
     def test_mixed_input_types(self, t1_path, t1c_path, load_np_from_nifti):
         with pytest.raises(AssertionError):
-            config = AuroraInfererConfig(
-                t1=t1_path, t1c=load_np_from_nifti(t1c_path))
+            config = AuroraInfererConfig(t1=t1_path, t1c=load_np_from_nifti(t1c_path))
             _ = AuroraInferer(config=config)
 
     def test_setup_logger(self, mock_config):
@@ -69,7 +65,7 @@ class TestAuroraInferer:
 
     def test_infer(self, mock_config):
         inferer = AuroraInferer(config=mock_config)
-        with patch.object(inferer, '_sliding_window_inference', return_value=None):
+        with patch.object(inferer, "_sliding_window_inference", return_value=None):
             inferer.infer()
 
     def test_configure_device(self, mock_config):

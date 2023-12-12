@@ -1,7 +1,9 @@
-
-
-from brainles_aurora.constants import DataMode
-from brainles_aurora.inferer import AuroraInferer, AuroraGPUInferer, AuroraInfererConfig
+from brainles_aurora.inferer.constants import DataMode
+from brainles_aurora.inferer.inferer import (
+    AuroraInferer,
+    AuroraGPUInferer,
+    AuroraInfererConfig,
+)
 import os
 from path import Path
 import nibabel as nib
@@ -51,12 +53,13 @@ def gpu_np():
         t1=load_np_from_nifti(t1),
         t1c=load_np_from_nifti(t1c),
         t2=load_np_from_nifti(t2),
-        fla=load_np_from_nifti(fla)
+        fla=load_np_from_nifti(fla),
     )
     inferer = AuroraGPUInferer(
         config=config,
     )
     inferer.infer()
+
 
 def gpu_output_np():
     config = AuroraInfererConfig(
