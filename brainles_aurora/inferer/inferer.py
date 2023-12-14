@@ -42,7 +42,7 @@ class AbstractInferer(ABC):
         # setup output folder
         self.output_folder = (
             Path(os.path.abspath(self.config.output_folder))
-            / f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            / f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
         )
         self.output_folder.mkdir(exist_ok=True, parents=True)
 
