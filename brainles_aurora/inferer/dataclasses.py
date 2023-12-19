@@ -30,8 +30,3 @@ class AuroraInfererConfig(BaseConfig):
     sliding_window_overlap: float = 0.5
     crop_size: Tuple[int, int, int] = (192, 192, 32)
     model_selection: ModelSelection = ModelSelection.BEST
-
-
-@dataclass
-class DockerInfererConfig(BaseConfig):
-    container_id: str = "mocker"  # TODO: change to enum of all available containers
