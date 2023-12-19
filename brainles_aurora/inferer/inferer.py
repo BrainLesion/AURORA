@@ -137,8 +137,10 @@ class AuroraInferer(AbstractInferer):
             ]
         ]
 
+        not_none_images = [img for img in images if img is not None]
+        assert len(not_none_images) > 0, "No input images provided"
         # make sure all inputs have the same type
-        unique_types = set(map(type, filter(lambda x: x is not None, images)))
+        unique_types = set(map(type, not_none_images))
         assert (
             len(unique_types) == 1
         ), f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
