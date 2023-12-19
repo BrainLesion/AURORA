@@ -39,10 +39,10 @@ exclude = ["brainles_aurora/model_weights"]
 [tool.poetry.dependencies]
 # core
 python = "^3.10"
-monai = "^1.2.0"
-torch = "^2.1.0"
-nibabel = "^4.0.2"
-numpy = "^1.23.0"
+monai = ">=1.2.0"
+torch = ">=2.1.0"
+nibabel = ">=4.0.2"
+numpy = ">=1.23.0"
 
 # utils
 PyGithub = "^1.57"
