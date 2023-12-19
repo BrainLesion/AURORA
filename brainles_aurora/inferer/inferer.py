@@ -36,7 +36,20 @@ if not MODEL_WEIGHTS_DIR.exists():
 
 
 class AbstractInferer(ABC):
+    """
+    Abstract base class for inference.
+
+    Attributes:
+        config (BaseConfig): The configuration for the inferer.
+        output_folder (Path): The output folder for the inferer. Follows the schema {config.output_folder}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}
+    """
+
     def __init__(self, config: BaseConfig) -> None:
+        """Initialize the abstract inferer. Sets up the logger and output folder.
+
+        Args:
+            config (BaseConfig): Configuration for the inferer.
+        """
         self.config = config
 
         # setup output folder
@@ -50,6 +63,8 @@ class AbstractInferer(ABC):
         self._setup_logger()
 
     def _setup_logger(self) -> None:
+        """Set up the logger for the inferer."""
+
         self.log_path = self.output_folder / f"{self.__class__.__name__}.log"
         logging.basicConfig(
             format="%(asctime)s %(levelname)s: %(message)s",
@@ -66,7 +81,14 @@ class AbstractInferer(ABC):
 
 
 class AuroraInferer(AbstractInferer):
+    """Inferer for the CPU Aurora models."""
+
     def __init__(self, config: AuroraInfererConfig) -> None:
+        """Initialize the AuroraInferer.
+
+        Args:
+            config (AuroraInfererConfig): Configuration for the Aurora inferer.
+        """
         # TODO move weights path / download to config and setup
         super().__init__(config=config)
 
@@ -82,6 +104,12 @@ class AuroraInferer(AbstractInferer):
         self.model = self._get_model()
 
     def _validate_images(self) -> List[np.ndarray | None] | List[Path | None]:
+        """Validate input images, sets the input mode and returns the list of validated images.
+
+        Returns:
+            List[np.ndarray | None] | List[Path | None]: List of validated images.
+        """
+
         def _validate_image(
             data: str | Path | np.ndarray | None,
         ) -> np.ndarray | Path | None:
@@ -121,6 +149,13 @@ class AuroraInferer(AbstractInferer):
         return images
 
     def _determine_inference_mode(self) -> InferenceMode:
+        """Determine the inference mode based on the provided images.
+
+        Raises:
+            NotImplementedError: If no model is implemented for the combination of input images.
+        Returns:
+            InferenceMode: Inference mode based on the combination of input images.
+        """
         _t1, _t1c, _t2, _fla = [img is not None for img in self.images]
         logging.info(
             f"Received files: T1: {_t1}, T1C: {_t1c}, T2: {_t2}, FLAIR: {_fla}"
@@ -138,6 +173,11 @@ class AuroraInferer(AbstractInferer):
         return mode
 
     def _get_data_loader(self) -> torch.utils.data.DataLoader:
+        """Get the data loader for inference.
+
+        Returns:
+            torch.utils.data.DataLoader: Data loader for inference.
+        """
         # init transforms
         transforms = [
             LoadImageD(keys=["images"])
@@ -188,6 +228,11 @@ class AuroraInferer(AbstractInferer):
         return data_loader
 
     def _get_model(self) -> torch.nn.Module:
+        """Get the Aurora model based on the inference mode.
+
+        Returns:
+            torch.nn.Module: Aurora model.
+        """
         # init model
         model = BasicUNet(
             spatial_dims=3,
@@ -231,6 +276,16 @@ class AuroraInferer(AbstractInferer):
     def _apply_test_time_augmentations(
         self, outputs: torch.Tensor, data: Dict, inferer: SlidingWindowInferer
     ) -> torch.Tensor:
+        """Apply test time augmentations to the model outputs.
+
+        Args:
+            outputs (torch.Tensor): Model outputs.
+            data (Dict): Input data.
+            inferer (SlidingWindowInferer): Sliding window inferer.
+
+        Returns:
+            torch.Tensor: Augmented model outputs.
+        """
         n = 1.0
         for _ in range(4):
             # test time augmentations
@@ -251,9 +306,19 @@ class AuroraInferer(AbstractInferer):
         return outputs
 
     def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
+        """Get the list of non-None input images in  order T1-T1C-T2-FLA.
+
+        Returns:
+            List[np.ndarray] | List[Path]: List of non-None images.
+        """
         return [img for img in self.images if img is not None]
 
     def _save_as_nifti(self, postproc_data: Dict[str, np.ndarray]) -> None:
+        """Save post-processed data as NIFTI files.
+
+        Args:
+            postproc_data (Dict[str, np.ndarray]): Post-processed data.
+        """
         # determine affine/ header
         if self.input_mode == DataMode.NIFTI_FILE:
             reference_file = self._get_not_none_files()[0]
@@ -277,6 +342,15 @@ class AuroraInferer(AbstractInferer):
     def _post_process(
         self, onehot_model_outputs_CHWD: torch.Tensor
     ) -> Dict[str, np.ndarray]:
+        """Post-process the model outputs.
+
+        Args:
+            onehot_model_outputs_CHWD (torch.Tensor): One-hot encoded model outputs.
+
+        Returns:
+            Dict[str, np.ndarray]: Post-processed data.
+        """
+
         # create segmentations
         activated_outputs = (
             (onehot_model_outputs_CHWD[0][:, :, :, :].sigmoid()).detach().cpu().numpy()
@@ -294,6 +368,7 @@ class AuroraInferer(AbstractInferer):
         whole_out = binarized_outputs[0]
         enhancing_out = binarized_outputs[1]
 
+        # create output dict based on config
         data = {"segmentation": final_seg}
         if self.config.output_whole_network:
             data["output_whole_network"] = whole_out
@@ -302,6 +377,11 @@ class AuroraInferer(AbstractInferer):
         return data
 
     def _sliding_window_inference(self) -> None | Dict[str, np.ndarray]:
+        """Perform sliding window inference using monai.inferers.SlidingWindowInferer.
+
+        Returns:
+            None | Dict[str, np.ndarray]: Post-processed data if output_mode is NUMPY, otherwise the data is saved as a niftis and None is returned.
+        """
         inferer = SlidingWindowInferer(
             roi_size=self.config.crop_size,  # = patch_size
             sw_batch_size=self.config.sliding_window_batch_size,
@@ -335,16 +415,19 @@ class AuroraInferer(AbstractInferer):
                     self._save_as_nifti(postproc_data=postprocessed_data)
                     return
 
-    def infer(self) -> None:
-        logging.info(f"Running inference on {self.device}")
-        return self._infer()
-
     def _configure_device(self) -> torch.device:
+        """Configure the device for inference.
+
+        Returns:
+            torch.device: Configured device.
+        """
         device = torch.device("cpu")
         logging.info(f"Using device: {device}")
         return device
 
-    def _infer(self) -> None:
+    def infer(self) -> None:
+        """Run the inference process."""
+        logging.info(f"Running inference on {self.device}")
         return self._sliding_window_inference()
 
 
@@ -352,16 +435,29 @@ class AuroraInferer(AbstractInferer):
 # GPU Inferer
 ####################
 class AuroraGPUInferer(AuroraInferer):
+    """Inferer for the Aurora models on GPU."""
+
     def __init__(
         self,
         config: AuroraInfererConfig,
         cuda_devices: str = "0",
     ) -> None:
+        """Initialize the AuroraGPUInferer.
+
+        Args:
+            config (AuroraInfererConfig): Configuration for the Aurora GPU inferer.
+            cuda_devices (str, optional): CUDA devices to use. Defaults to "0".
+        """
         self.cuda_devices = cuda_devices
 
         super().__init__(config=config)
 
     def _configure_device(self) -> torch.device:
+        """Configure the GPU device for inference.
+
+        Returns:
+            torch.device: Configured GPU device.
+        """
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = self.cuda_devices
 
