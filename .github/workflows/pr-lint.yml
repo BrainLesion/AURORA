@@ -7,3 +7,4 @@ on:
 jobs:
   black_linter:
     uses: BrainLesion/BrainLes/.github/workflows/pr_lint.yml@main
+    secrets: inherit
