@@ -6,3 +6,4 @@ on:
 jobs:
   brainles_autoformat:
     uses: BrainLesion/BrainLes/.github/workflows/autoformat.yml@main
+    secrets: inherit
