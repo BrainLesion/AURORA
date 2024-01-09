@@ -1,10 +1,10 @@
-name: Lint
+name: lint
 
 on:
   pull_request:
     branches:
       - main
 jobs:
-  black_linter:
+  run_lint:
     uses: BrainLesion/BrainLes/.github/workflows/pr_lint.yml@main
     secrets: inherit
