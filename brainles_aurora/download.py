@@ -45,11 +45,3 @@ def download_model_weights(target_folder):
         out=target_folder,
         recursive=True,
     )
-
-    sh.move(
-        src=os.path.join(target_folder, dl_folder),
-        dst=target_folder,
-    )
-    sh.rmtree(os.path.join(target_folder, "AURORA"))
-
-    # https://github.com/neuronflow/BrainLes/tree/8723d7b26a84fe00187aa2ebff7b66904913d7ed/AURORA/brainles_aurora/model_weights
