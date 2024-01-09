@@ -1,0 +1,12 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  brainles_pr_lint:
+    uses: BrainLesion/BrainLes/.github/workflows/pr_lint.yml@main
