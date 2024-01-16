@@ -33,20 +33,15 @@ def download_file(repo: Repository, folder: str, out: str):
 def download_model_weights(target_folder):
     # dl
     g = Github()
-    # TODO broken
-    repo = g.get_repo("neuronflow/BrainLes")
-    dl_folder = "AURORA/brainles_aurora/model_weights"
+    repo = g.get_repo("BrainLesion/AURORA")
+    dl_folder = "brainles_aurora/model_weights"
+    # get parent of parget folder to prevent /AURORA/brainles_aurora/brainles_aurora/model_weights
+    if "brainles_aurora" in target_folder:
+        target_folder = os.path.dirname(target_folder)
+
     download_folder(
         repo=repo,
         folder=dl_folder,
         out=target_folder,
         recursive=True,
     )
-
-    sh.move(
-        src=os.path.join(target_folder, dl_folder),
-        dst=target_folder,
-    )
-    sh.rmtree(os.path.join(target_folder, "AURORA"))
-
-    # https://github.com/neuronflow/BrainLes/tree/8723d7b26a84fe00187aa2ebff7b66904913d7ed/AURORA/brainles_aurora/model_weights

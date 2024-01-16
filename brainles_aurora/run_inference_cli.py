@@ -1,16 +1,24 @@
 from lib import single_inference
 import click
 
-@click.command()
-@click.option('--t1_file', default=None, help='Path to T1 file')
-@click.option('--t1c_file', default=None, help='Path to T1-CE file')
-@click.option('--t2_file', default=None, help='Path to T2 file')
-@click.option('--fla_file', default=None, help='Path to T2-FLAIR file')
-@click.option('--segmentation_file', default=None, help='Path to segmentation output')
-@click.option('--whole_network_outputs_file', default=None, help='OPTIONAL: Path to additional output for whole lesion')
-@click.option('--metastasis_network_outputs_file', default=None, help='OPTIONAL: Path to additional output for metastasis only')
-@click.option('--tta', default=True, help='Activate TTA')
 
+@click.command()
+@click.option("--t1_file", default=None, help="Path to T1 file")
+@click.option("--t1c_file", default=None, help="Path to T1-CE file")
+@click.option("--t2_file", default=None, help="Path to T2 file")
+@click.option("--fla_file", default=None, help="Path to T2-FLAIR file")
+@click.option("--segmentation_file", default=None, help="Path to segmentation output")
+@click.option(
+    "--whole_network_outputs_file",
+    default=None,
+    help="OPTIONAL: Path to additional output for whole lesion",
+)
+@click.option(
+    "--metastasis_network_outputs_file",
+    default=None,
+    help="OPTIONAL: Path to additional output for metastasis only",
+)
+@click.option("--tta", default=True, help="Activate TTA")
 def run_single_inference(
     t1_file=None,
     t1c_file=None,
@@ -47,8 +55,8 @@ def run_single_inference(
         crop_size,  # optional: only change if you know what you are doing
         model_selection,  # optional: only change if you know what you are doing
         verbosity,  # optional: verbosity of the output
-        )
+    )
+
 
 if __name__ == "__main__":
     run_single_inference()
-
