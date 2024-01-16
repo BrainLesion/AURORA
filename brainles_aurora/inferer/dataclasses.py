@@ -16,6 +16,7 @@ class BaseConfig:
         output_mode (DataMode, optional): Output mode for the inference results. Defaults to DataMode.NIFTI_FILE.
         output_folder (str | Path, optional): Output folder for the results. Defaults to "aurora_output".
         log_level (int | str, optional): Logging level. Defaults to logging.INFO.
+        segmentation_file_name (str, optional): File name for the segmentation result. Defaults to "segmentation.nii.gz". (The segmentation will be saved in output_folder/{timestamp}/segmentation_file_name)
         t1 (str | Path | np.ndarray | None, optional): Path or NumPy array for T1 image. Defaults to None.
         t1c (str | Path | np.ndarray | None, optional): Path or NumPy array for T1 contrast-enhanced image. Defaults to None.
         t2 (str | Path | np.ndarray | None, optional): Path or NumPy array for T2 image. Defaults to None.
@@ -24,6 +25,7 @@ class BaseConfig:
 
     output_mode: DataMode = DataMode.NIFTI_FILE
     output_folder: str | Path = "aurora_output"
+    segmentation_file_name: str | None = "segmentation.nii.gz"
     log_level: int | str = logging.INFO
     t1: str | Path | np.ndarray | None = None
     t1c: str | Path | np.ndarray | None = None
@@ -38,6 +40,7 @@ class AuroraInfererConfig(BaseConfig):
     Attributes:
         output_mode (DataMode, optional): Output mode for the inference results. Defaults to DataMode.NIFTI_FILE.
         output_folder (str | Path, optional): Output folder for the results. Defaults to "aurora_output".
+        segmentation_file_name (str, optional): File name for the segmentation result. Defaults to "segmentation.nii.gz". (The segmentation will be saved in output_folder/{timestamp}/segmentation_file_name)
         log_level (int | str, optional): Logging level. Defaults to logging.INFO.
         t1 (str | Path | np.ndarray | None, optional): Path or NumPy array for T1 image. Defaults to None.
         t1c (str | Path | np.ndarray | None, optional): Path or NumPy array for T1 contrast-enhanced image. Defaults to None.

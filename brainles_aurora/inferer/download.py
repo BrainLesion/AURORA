@@ -33,6 +33,7 @@ def download_file(repo: Repository, folder: str, out: str):
 def download_model_weights(target_folder):
     # dl
     g = Github()
+    # TODO broken
     repo = g.get_repo("neuronflow/BrainLes")
     dl_folder = "AURORA/brainles_aurora/model_weights"
     download_folder(

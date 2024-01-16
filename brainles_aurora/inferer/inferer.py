@@ -3,6 +3,7 @@ import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+import sys
 from typing import Dict, List
 
 import monai
@@ -65,14 +66,29 @@ class AbstractInferer(ABC):
     def _setup_logger(self) -> None:
         """Set up the logger for the inferer."""
 
-        self.log_path = self.output_folder / f"{self.__class__.__name__}.log"
+        self.log_path = self.output_folder / f"{self.config.segmentation_file_name}.log"
+
         logging.basicConfig(
+            # stream=sys.stderr,
             format="%(asctime)s %(levelname)s: %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
             level=self.config.log_level,
             encoding="utf-8",
-            handlers=[logging.StreamHandler(), logging.FileHandler(self.log_path)],
+            handlers=[
+                logging.StreamHandler(),
+                logging.FileHandler(self.log_path),
+            ],
         )
+
+        class CustomStdErrStream:
+            """Capture stderr and log it to the logger."""
+
+            def write(self, msg: str):
+                if msg := msg.rstrip():
+                    logging.error(msg)
+
+        # sys.stderr = CustomStdErrStream()
+
         logging.info(f"Logging to: {self.log_path}")
 
     @abstractmethod
@@ -92,7 +108,9 @@ class AuroraInferer(AbstractInferer):
         # TODO move weights path / download to config and setup
         super().__init__(config=config)
 
-        logging.info(f"Initialized {self.__class__.__name__}")
+        logging.info(
+            f"Initialized {self.__class__.__name__} with config: {self.config}"
+        )
 
         self.images = self._validate_images()
         self.mode = self._determine_inference_mode()
@@ -235,6 +253,9 @@ class AuroraInferer(AbstractInferer):
         Returns:
             torch.nn.Module: Aurora model.
         """
+
+        # fuckery:
+        x = 70 / 0
         # init model
         model = BasicUNet(
             spatial_dims=3,
@@ -336,7 +357,11 @@ class AuroraInferer(AbstractInferer):
 
         # save niftis
         for key, data in postproc_data.items():
-            output_file = self.output_folder / f"{key}.nii.gz"
+            # TODO: verify and make enum?
+            if key == "segmentation":
+                output_file = self.output_folder / self.config.segmentation_file_name
+            else:
+                output_file = self.output_folder / f"{key}.nii.gz"
             output_image = nib.Nifti1Image(data, affine, header)
             nib.save(output_image, output_file)
             logging.info(f"Saved {key} to {output_file}")
