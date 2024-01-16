@@ -5,9 +5,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 import sys
 from typing import Dict, List
-from typing import IO
 
-from datetime import datetime
 import monai
 import nibabel as nib
 import numpy as np
@@ -33,28 +31,9 @@ from brainles_aurora.inferer.constants import (
     InferenceMode,
     Output,
 )
-from brainles_aurora.aux import turbo_path
+from brainles_aurora.aux import turbo_path, DualStdErrOutput
 from brainles_aurora.inferer.dataclasses import AuroraInfererConfig, BaseConfig
-from brainles_aurora.inferer.download import download_model_weights
-
-
-class DualStdErrOutput:
-    def __init__(self, stderr: IO, file_handler_stream: IO = None):
-        self.stderr = stderr
-        self.file_handler_stream = file_handler_stream
-
-    def set_file_handler_stream(self, file_handler_stream: IO):
-        self.file_handler_stream = file_handler_stream
-
-    def write(self, text):
-        self.stderr.write(text)
-        if self.file_handler_stream:
-            self.file_handler_stream.write(text)
-
-    def flush(self):
-        self.stderr.flush()
-        if self.file_handler_stream:
-            self.file_handler_stream.flush()
+from brainles_aurora.download import download_model_weights
 
 
 class AbstractInferer(ABC):
@@ -87,11 +66,19 @@ class AbstractInferer(ABC):
             download_model_weights(target_folder=self.lib_path)
 
     def _setup_logger(self, log_file: str | Path | None) -> Logger:
-        # Create a logger for each inference run with a unique log file
+        """Setup a logger with an optional log file.
+
+        Args:
+            log_file (str | Path | None): Path to the log file. If None, no log file is created.
+
+        Returns:
+            Logger: Logger instance.
+        """
 
         default_formatter = logging.Formatter(
             "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
         )
+        # we create a new log file and therefore logger for each infer call, hence the logger need unique names
         logger = logging.getLogger(f"Inferer_{uuid.uuid4()}")
         logger.setLevel(self.config.log_level)  # Set the desired logging level
         stream_handler = logging.StreamHandler()
@@ -141,7 +128,15 @@ class AuroraInferer(AbstractInferer):
         t2: str | Path | np.ndarray | None = None,
         fla: str | Path | np.ndarray | None = None,
     ) -> List[np.ndarray | None] | List[Path | None]:
-        """Validate input images, sets the input mode and returns the list of validated images.
+        """Validate the input images. \n
+        Verify that the input images exist (for paths) and are all of the same type (NumPy or Nifti).
+        If the input is a numpy array, the input mode is set to DataMode.NUMPY, otherwise to DataMode.NIFTI_FILE.
+
+        Args:
+            t1 (str | Path | np.ndarray | None, optional): T1 modality. Defaults to None.
+            t1c (str | Path | np.ndarray | None, optional): T1C modality. Defaults to None.
+            t2 (str | Path | np.ndarray | None, optional): T2 modality. Defaults to None.
+            fla (str | Path | np.ndarray | None, optional): FLAIR modality. Defaults to None.
 
         Returns:
             List[np.ndarray | None] | List[Path | None]: List of validated images.
@@ -187,8 +182,13 @@ class AuroraInferer(AbstractInferer):
         )
         return images
 
-    def _determine_inference_mode(self, images) -> InferenceMode:
+    def _determine_inference_mode(
+        self, images: List[np.ndarray | None] | List[Path | None]
+    ) -> InferenceMode:
         """Determine the inference mode based on the provided images.
+
+        Args:
+            images (List[np.ndarray | None] | List[Path | None]): List of validated images.
 
         Raises:
             NotImplementedError: If no model is implemented for the combination of input images.
