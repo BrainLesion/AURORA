@@ -65,7 +65,7 @@ class AbstractInferer(ABC):
         if not self.model_weights_folder.exists():
             download_model_weights(target_folder=self.lib_path)
 
-    def _setup_logger(self, log_file: str | Path | None) -> Logger:
+    def _setup_logger(self, log_file: str | Path | None = None) -> Logger:
         """Setup a logger with an optional log file.
 
         Args:
@@ -476,14 +476,38 @@ class AuroraInferer(AbstractInferer):
         segmentation_file: str | Path | None = None,
         whole_network_file: str | Path | None = None,
         metastasis_network_file: str | Path | None = None,
-    ) -> None:
-        """Run the inference process."""
+        log_file: str | Path | None = None,
+    ) -> Dict[str, np.ndarray] | None:
+        """Perform inference on the provided images.
+
+        Args:
+            t1 (str | Path | np.ndarray | None, optional): T1 modality. Defaults to None.
+            t1c (str | Path | np.ndarray | None, optional): T1C modality. Defaults to None.
+            t2 (str | Path | np.ndarray | None, optional): T2 modality. Defaults to None.
+            fla (str | Path | np.ndarray | None, optional): FLAIR modality. Defaults to None.
+
+            ### The following file paths are only required when in Nifti output mode:
+
+            segmentation_file (str | Path | None, optional): Path where the segementation file should be stored. Defaults to None. Should be a nifti file. Defaults internally to a './segmentation.nii.gz'.
+            whole_network_file (str | Path | None, optional): Path. Defaults to None.
+            metastasis_network_file (str | Path | None, optional): _description_. Defaults to None.
+
+            ### Custom log file path. BY default this is set internally to the same path as segmentation_file with the extension .log or to ./{self.__class__.__name__}.log if no segmentation_file is provided
+
+            log_file (str | Path | None, optional): _description_. Defaults to None.
+
+        Returns:
+            Dict[str, np.ndarray] | None: Post-processed data if output_mode is NUMPY, otherwise the data is saved as a niftis and None is returned.
+        """
         # setup logger for inference run
-        log_path = (
-            Path(segmentation_file).with_suffix(".log") if segmentation_file else "."
-        )
+        if not log_file:
+            log_file = (
+                Path(segmentation_file).with_suffix(".log")
+                if segmentation_file
+                else os.path.abspath(f"./{self.__class__.__name__}.log")
+            )
         self.log = self._setup_logger(
-            log_file=log_path,
+            log_file=log_file,
         )
 
         self.log.info(f"Running inference on {self.device}")
@@ -496,11 +520,13 @@ class AuroraInferer(AbstractInferer):
         )
 
         if prev_mode != self.inference_mode:
-            self.log.info("Loading Model and weights")
+            self.log.info(
+                "No loaded compatible load model found. Loading Model and weights"
+            )
             self.model = self._get_model()
         else:
             self.log.info(
-                f"Same inference mode {self.inference_mode}. Reusing previouse model"
+                f"Same inference mode {self.inference_mode}. Re-using previously loaded model"
             )
 
         self.log.info("Setting up Dataloader")
@@ -510,8 +536,10 @@ class AuroraInferer(AbstractInferer):
         if self.config.output_mode == DataMode.NIFTI_FILE:
             # TODO add error handling to ensure file extensions present
             if not segmentation_file:
-                default_segmentation_path = "segmentation.nii.gz"
-                self.log.warning("No segmentation file name provided, using default")
+                default_segmentation_path = os.path.abspath("./segmentation.nii.gz")
+                self.log.warning(
+                    f"No segmentation file name provided, using default path: {default_segmentation_path}"
+                )
             self.output_file_mapping = {
                 Output.SEGMENTATION: segmentation_file or default_segmentation_path,
                 Output.WHOLE_NETWORK: whole_network_file,
@@ -519,7 +547,9 @@ class AuroraInferer(AbstractInferer):
             }
 
         ########
-        return self._sliding_window_inference()
+        out = self._sliding_window_inference()
+        self.log.info(f"Finished inference {os.linesep}")
+        return out
 
 
 ####################

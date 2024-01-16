@@ -1,5 +1,6 @@
 from pathlib import Path
 from unittest.mock import patch
+import logging
 
 import nibabel as nib
 import numpy as np
@@ -29,8 +30,8 @@ class TestAuroraInferer:
         return "example_data/BraTS-MET-00110-000-t2f.nii.gz"
 
     @pytest.fixture
-    def mock_config(self, t1_path, t1c_path, t2_path, fla_path):
-        return AuroraInfererConfig(t1=t1_path, t1c=t1c_path, t2=t2_path, fla=fla_path)
+    def mock_config(self):
+        return AuroraInfererConfig()
 
     @pytest.fixture
     def mock_inferer(self, mock_config):
@@ -43,76 +44,46 @@ class TestAuroraInferer:
 
         return _load_np_from_nifti
 
-    def test_validate_images(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        images = inferer._validate_images()
+    def test_validate_images(self, t1_path, t1c_path, t2_path, fla_path, mock_inferer):
+        images = mock_inferer._validate_images(
+            t1=t1_path, t1c=t1c_path, t2=t2_path, fla=fla_path
+        )
         assert len(images) == 4
         assert all(isinstance(img, Path) for img in images)
 
-    def test_validate_images_file_not_found(self, mock_config):
-        mock_config.t1 = "invalid_path.nii.gz"
+    def test_validate_images_file_not_found(self, mock_inferer):
         with pytest.raises(FileNotFoundError):
-            _ = AuroraInferer(config=mock_config)
-            # called internally in __init__
-            # inferer._validate_images()
+            _ = mock_inferer._validate_images(t1="invalid_path.nii.gz")
 
-    def test_validate_images_different_types(self, mock_config, load_np_from_nifti):
-        mock_config.t1 = load_np_from_nifti(mock_config.t1)
+    def test_validate_images_different_types(
+        self, mock_inferer, t1_path, t1c_path, load_np_from_nifti
+    ):
         with pytest.raises(AssertionError):
-            _ = AuroraInferer(config=mock_config)
-            # called internally in __init__
-            # inferer._validate_images()
+            _ = mock_inferer._validate_images(
+                t1=t1_path, t1c=load_np_from_nifti(t1c_path)
+            )
 
-    def test_validate_images_no_inputs(self, mock_config, load_np_from_nifti):
-        mock_config.t1 = None
-        mock_config.t1c = None
-        mock_config.t2 = None
-        mock_config.fla = None
+    def test_validate_images_no_inputs(self, mock_inferer):
         with pytest.raises(AssertionError):
-            _ = AuroraInferer(config=mock_config)
-            # called internally in __init__
-            # inferer._validate_images()
+            _ = mock_inferer._validate_images()
 
-    def test_determine_inference_mode(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        mode = inferer._determine_inference_mode()
+    def test_determine_inference_mode(self, mock_inferer, t1_path):
+        validated_images = mock_inferer._validate_images(t1=t1_path)
+        mode = mock_inferer._determine_inference_mode(images=validated_images)
         assert isinstance(mode, InferenceMode)
 
-    def test_determine_inference_mode_not_implemented(self, mock_config):
-        mock_validated_images = [
-            None,
-            None,
-            None,
-            None,
-        ]  # set all to None to raise NotImplementedError
-        with pytest.raises(NotImplementedError), patch(
-            "brainles_aurora.inferer.inferer.AuroraInferer._validate_images",
-            return_value=mock_validated_images,
-        ):
-            inferer = AuroraInferer(config=mock_config)
-            # called internally in __init__
-            # inferer._determine_inference_mode()
+    def test_determine_inference_mode_not_implemented(self, mock_inferer, t2_path):
+        images = mock_inferer._validate_images(t2=t2_path)
+        with pytest.raises(NotImplementedError):
+            mode = mock_inferer._determine_inference_mode(images=images)
 
-    def test_get_data_loader(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        data_loader = inferer._get_data_loader()
-        assert isinstance(data_loader, torch.utils.data.DataLoader)
+    def test_setup_logger(self, mock_inferer):
+        logger = mock_inferer._setup_logger()
+        assert isinstance(logger, logging.Logger)
 
-    def test_get_model(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        model = inferer._get_model()
-        assert isinstance(model, torch.nn.Module)
-
-    def test_setup_logger(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        assert inferer.log_path is not None
-        assert inferer.output_folder.exists()
-        assert inferer.output_folder.is_dir()
-
-    def test_infer(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        with patch.object(inferer, "_sliding_window_inference", return_value=None):
-            inferer.infer()
+    def test_infer(self, mock_inferer, t1_path):
+        with patch.object(mock_inferer, "_sliding_window_inference", return_value=None):
+            mock_inferer.infer(t1=t1_path)
 
     def test_configure_device(self, mock_config):
         inferer = AuroraInferer(config=mock_config)
@@ -127,13 +98,3 @@ class TestAuroraInferer:
         inferer = AuroraGPUInferer(config=mock_config)
         device = inferer._configure_device()
         assert device == torch.device("cuda")
-
-    def test_get_model(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        model = inferer._get_model()
-        assert isinstance(model, torch.nn.Module)
-
-    def test_get_data_loader(self, mock_config):
-        inferer = AuroraInferer(config=mock_config)
-        data_loader = inferer._get_data_loader()
-        assert isinstance(data_loader, torch.utils.data.DataLoader)
