@@ -1,11 +1,13 @@
 import logging
+from logging import Logger
 import os
 from abc import ABC, abstractmethod
-from datetime import datetime
 from pathlib import Path
 import sys
 from typing import Dict, List
+from typing import IO
 
+from datetime import datetime
 import monai
 import nibabel as nib
 import numpy as np
@@ -23,17 +25,36 @@ from monai.transforms import (
     ToTensord,
 )
 from torch.utils.data import DataLoader
+import uuid
 
-from brainles_aurora.inferer.constants import IMGS_TO_MODE_DICT, DataMode, InferenceMode
+from brainles_aurora.inferer.constants import (
+    IMGS_TO_MODE_DICT,
+    DataMode,
+    InferenceMode,
+    Output,
+)
 from brainles_aurora.aux import turbo_path
 from brainles_aurora.inferer.dataclasses import AuroraInfererConfig, BaseConfig
 from brainles_aurora.inferer.download import download_model_weights
 
-LIB_ABSPATH: str = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_WEIGHTS_DIR = Path(LIB_ABSPATH).parent / "model_weights"
-if not MODEL_WEIGHTS_DIR.exists():
-    download_model_weights(target_folder=LIB_ABSPATH)
+class DualStdErrOutput:
+    def __init__(self, stderr: IO, file_handler_stream: IO = None):
+        self.stderr = stderr
+        self.file_handler_stream = file_handler_stream
+
+    def set_file_handler_stream(self, file_handler_stream: IO):
+        self.file_handler_stream = file_handler_stream
+
+    def write(self, text):
+        self.stderr.write(text)
+        if self.file_handler_stream:
+            self.file_handler_stream.write(text)
+
+    def flush(self):
+        self.stderr.flush()
+        if self.file_handler_stream:
+            self.file_handler_stream.flush()
 
 
 class AbstractInferer(ABC):
@@ -46,50 +67,48 @@ class AbstractInferer(ABC):
     """
 
     def __init__(self, config: BaseConfig) -> None:
-        """Initialize the abstract inferer. Sets up the logger and output folder.
+        """Initialize the abstract inferer
 
         Args:
             config (BaseConfig): Configuration for the inferer.
         """
         self.config = config
 
-        # setup output folder
-        self.output_folder = (
-            Path(os.path.abspath(self.config.output_folder))
-            / f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-        )
-        self.output_folder.mkdir(exist_ok=True, parents=True)
-
         # setup logger
-        self._setup_logger()
+        self.dual_stderr_output = DualStdErrOutput(sys.stderr)
+        sys.stderr = self.dual_stderr_output
+        self.log = self._setup_logger(log_file=None)
 
-    def _setup_logger(self) -> None:
-        """Set up the logger for the inferer."""
+        # download weights if not present
+        self.lib_path: str = os.path.dirname(os.path.abspath(__file__))
 
-        self.log_path = self.output_folder / f"{self.config.segmentation_file_name}.log"
+        self.model_weights_folder = Path(self.lib_path).parent / "model_weights"
+        if not self.model_weights_folder.exists():
+            download_model_weights(target_folder=self.lib_path)
 
-        logging.basicConfig(
-            # stream=sys.stderr,
-            format="%(asctime)s %(levelname)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-            level=self.config.log_level,
-            encoding="utf-8",
-            handlers=[
-                logging.StreamHandler(),
-                logging.FileHandler(self.log_path),
-            ],
+    def _setup_logger(self, log_file: str | Path | None) -> Logger:
+        # Create a logger for each inference run with a unique log file
+
+        default_formatter = logging.Formatter(
+            "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
         )
+        logger = logging.getLogger(f"Inferer_{uuid.uuid4()}")
+        logger.setLevel(self.config.log_level)  # Set the desired logging level
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(default_formatter)
+        logger.addHandler(stream_handler)
 
-        class CustomStdErrStream:
-            """Capture stderr and log it to the logger."""
+        if log_file:
+            # Create a file handler. We dont add it to the logger directly, but to the dual_stderr_output
+            # This way als console output includign excpetions will be redirceted to the log file
 
-            def write(self, msg: str):
-                if msg := msg.rstrip():
-                    logging.error(msg)
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            file_handler = logging.FileHandler(log_file)
 
-        # sys.stderr = CustomStdErrStream()
+            self.dual_stderr_output.set_file_handler_stream(file_handler.stream)
+            logger.info(f"Logging to: {log_file}")
 
-        logging.info(f"Logging to: {self.log_path}")
+        return logger
 
     @abstractmethod
     def infer(self):
@@ -105,23 +124,23 @@ class AuroraInferer(AbstractInferer):
         Args:
             config (AuroraInfererConfig): Configuration for the Aurora inferer.
         """
-        # TODO move weights path / download to config and setup
         super().__init__(config=config)
 
-        logging.info(
+        self.log.info(
             f"Initialized {self.__class__.__name__} with config: {self.config}"
         )
-
-        self.images = self._validate_images()
-        self.mode = self._determine_inference_mode()
-
         self.device = self._configure_device()
-        logging.info("Setting up Dataloader")
-        self.data_loader = self._get_data_loader()
-        logging.info("Loading Model and weights")
-        self.model = self._get_model()
 
-    def _validate_images(self) -> List[np.ndarray | None] | List[Path | None]:
+        self.validated_images = None
+        self.inference_mode = None
+
+    def _validate_images(
+        self,
+        t1: str | Path | np.ndarray | None = None,
+        t1c: str | Path | np.ndarray | None = None,
+        t2: str | Path | np.ndarray | None = None,
+        fla: str | Path | np.ndarray | None = None,
+    ) -> List[np.ndarray | None] | List[Path | None]:
         """Validate input images, sets the input mode and returns the list of validated images.
 
         Returns:
@@ -148,10 +167,10 @@ class AuroraInferer(AbstractInferer):
         images = [
             _validate_image(img)
             for img in [
-                self.config.t1,
-                self.config.t1c,
-                self.config.t2,
-                self.config.fla,
+                t1,
+                t1c,
+                t2,
+                fla,
             ]
         ]
 
@@ -163,12 +182,12 @@ class AuroraInferer(AbstractInferer):
             len(unique_types) == 1
         ), f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
 
-        logging.info(
+        self.log.info(
             f"Successfully validated input images. Input mode: {self.input_mode}"
         )
         return images
 
-    def _determine_inference_mode(self) -> InferenceMode:
+    def _determine_inference_mode(self, images) -> InferenceMode:
         """Determine the inference mode based on the provided images.
 
         Raises:
@@ -176,8 +195,8 @@ class AuroraInferer(AbstractInferer):
         Returns:
             InferenceMode: Inference mode based on the combination of input images.
         """
-        _t1, _t1c, _t2, _fla = [img is not None for img in self.images]
-        logging.info(
+        _t1, _t1c, _t2, _fla = [img is not None for img in images]
+        self.log.info(
             f"Received files: T1: {_t1}, T1C: {_t1c}, T2: {_t2}, FLAIR: {_fla}"
         )
 
@@ -189,7 +208,7 @@ class AuroraInferer(AbstractInferer):
                 "No model implemented for this combination of images"
             )
 
-        logging.info(f"Inference mode: {mode}")
+        self.log.info(f"Inference mode: {mode}")
         return mode
 
     def _get_data_loader(self) -> torch.utils.data.DataLoader:
@@ -225,12 +244,8 @@ class AuroraInferer(AbstractInferer):
 
         # Initialize data dictionary
         data = {
-            key: getattr(self.config, key)
-            for key in ["t1", "t1c", "t2", "fla"]
-            if getattr(self.config, key) is not None
+            "images": self._get_not_none_files(),
         }
-        # method returns files in standard order T1 T1C T2 FLAIR
-        data["images"] = self._get_not_none_files()
 
         # init dataset and dataloader
         infererence_ds = monai.data.Dataset(
@@ -254,8 +269,6 @@ class AuroraInferer(AbstractInferer):
             torch.nn.Module: Aurora model.
         """
 
-        # fuckery:
-        x = 70 / 0
         # init model
         model = BasicUNet(
             spatial_dims=3,
@@ -268,8 +281,8 @@ class AuroraInferer(AbstractInferer):
 
         # load weights
         weights_path = os.path.join(
-            MODEL_WEIGHTS_DIR,
-            self.mode,
+            self.model_weights_folder,
+            self.inference_mode,
             f"{self.config.model_selection}.tar",
         )
 
@@ -334,7 +347,9 @@ class AuroraInferer(AbstractInferer):
         Returns:
             List[np.ndarray] | List[Path]: List of non-None images.
         """
-        return [img for img in self.images if img is not None]
+        assert self.validated_images is not None, "Images not validated yet"
+
+        return [img for img in self.validated_images if img is not None]
 
     def _save_as_nifti(self, postproc_data: Dict[str, np.ndarray]) -> None:
         """Save post-processed data as NIFTI files.
@@ -348,23 +363,19 @@ class AuroraInferer(AbstractInferer):
             ref = nib.load(reference_file)
             affine, header = ref.affine, ref.header
         else:
-            logging.warning(
+            self.log.warning(
                 f"Writing NIFTI output after NumPy input, using default affine=np.eye(4) and header=None"
             )
             affine, header = np.eye(4), None
 
-        logging.info(f"Output folder set to {self.output_folder}")
-
         # save niftis
         for key, data in postproc_data.items():
-            # TODO: verify and make enum?
-            if key == "segmentation":
-                output_file = self.output_folder / self.config.segmentation_file_name
-            else:
-                output_file = self.output_folder / f"{key}.nii.gz"
-            output_image = nib.Nifti1Image(data, affine, header)
-            nib.save(output_image, output_file)
-            logging.info(f"Saved {key} to {output_file}")
+            output_file = self.output_file_mapping[key]
+            if output_file:
+                output_image = nib.Nifti1Image(data, affine, header)
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
+                nib.save(output_image, output_file)
+                self.log.info(f"Saved {key} to {output_file}")
 
     def _post_process(
         self, onehot_model_outputs_CHWD: torch.Tensor
@@ -396,12 +407,11 @@ class AuroraInferer(AbstractInferer):
         enhancing_out = binarized_outputs[1]
 
         # create output dict based on config
-        data = {"segmentation": final_seg}
-        if self.config.output_whole_network:
-            data["output_whole_network"] = whole_out
-        if self.config.output_metastasis_network:
-            data["output_metastasis_network"] = enhancing_out
-        return data
+        return {
+            Output.SEGMENTATION: final_seg,
+            Output.WHOLE_NETWORK: whole_out,
+            Output.METASTASIS_NETWORK: enhancing_out,
+        }
 
     def _sliding_window_inference(self) -> None | Dict[str, np.ndarray]:
         """Perform sliding window inference using monai.inferers.SlidingWindowInferer.
@@ -428,7 +438,7 @@ class AuroraInferer(AbstractInferer):
 
                 outputs = inferer(inputs, self.model)
                 if self.config.tta:
-                    logging.info("Applying test time augmentations")
+                    self.log.info("Applying test time augmentations")
                     outputs = self._apply_test_time_augmentations(
                         outputs, data, inferer
                     )
@@ -437,10 +447,15 @@ class AuroraInferer(AbstractInferer):
                     onehot_model_outputs_CHWD=outputs,
                 )
                 if self.config.output_mode == DataMode.NUMPY:
+                    # rm whole/ metastasus network if not requested
+                    if not self.config.include_whole_network_in_numpy_output_mode:
+                        _ = postprocessed_data.pop(Output.WHOLE_NETWORK)
+                    if not self.config.include_metastasis_network_in_numpy_output_mode:
+                        _ = postprocessed_data.pop(Output.METASTASIS_NETWORK)
                     return postprocessed_data
                 else:
                     self._save_as_nifti(postproc_data=postprocessed_data)
-                    return
+                    return None
 
     def _configure_device(self) -> torch.device:
         """Configure the device for inference.
@@ -449,12 +464,61 @@ class AuroraInferer(AbstractInferer):
             torch.device: Configured device.
         """
         device = torch.device("cpu")
-        logging.info(f"Using device: {device}")
+        self.log.info(f"Using device: {device}")
         return device
 
-    def infer(self) -> None:
+    def infer(
+        self,
+        t1: str | Path | np.ndarray | None = None,
+        t1c: str | Path | np.ndarray | None = None,
+        t2: str | Path | np.ndarray | None = None,
+        fla: str | Path | np.ndarray | None = None,
+        segmentation_file: str | Path | None = None,
+        whole_network_file: str | Path | None = None,
+        metastasis_network_file: str | Path | None = None,
+    ) -> None:
         """Run the inference process."""
-        logging.info(f"Running inference on {self.device}")
+        # setup logger for inference run
+        log_path = (
+            Path(segmentation_file).with_suffix(".log") if segmentation_file else "."
+        )
+        self.log = self._setup_logger(
+            log_file=log_path,
+        )
+
+        self.log.info(f"Running inference on {self.device}")
+
+        # check inputs and get mode , == prev mode => run inference, else load new model
+        prev_mode = self.inference_mode
+        self.validated_images = self._validate_images(t1=t1, t1c=t1c, t2=t2, fla=fla)
+        self.inference_mode = self._determine_inference_mode(
+            images=self.validated_images
+        )
+
+        if prev_mode != self.inference_mode:
+            self.log.info("Loading Model and weights")
+            self.model = self._get_model()
+        else:
+            self.log.info(
+                f"Same inference mode {self.inference_mode}. Reusing previouse model"
+            )
+
+        self.log.info("Setting up Dataloader")
+        self.data_loader = self._get_data_loader()
+
+        # setup output file paths
+        if self.config.output_mode == DataMode.NIFTI_FILE:
+            # TODO add error handling to ensure file extensions present
+            if not segmentation_file:
+                default_segmentation_path = "segmentation.nii.gz"
+                self.log.warning("No segmentation file name provided, using default")
+            self.output_file_mapping = {
+                Output.SEGMENTATION: segmentation_file or default_segmentation_path,
+                Output.WHOLE_NETWORK: whole_network_file,
+                Output.METASTASIS_NETWORK: metastasis_network_file,
+            }
+
+        ########
         return self._sliding_window_inference()
 
 
@@ -493,7 +557,7 @@ class AuroraGPUInferer(AuroraInferer):
         ), "No cuda device available while using GPUInferer"
 
         device = torch.device("cuda")
-        logging.info(f"Using device: {device}")
+        self.log.info(f"Using device: {device}")
 
         # clean memory
         torch.cuda.empty_cache()
