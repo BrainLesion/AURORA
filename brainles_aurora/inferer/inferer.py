@@ -88,8 +88,10 @@ class AbstractInferer(ABC):
         if log_file:
             # Create a file handler. We dont add it to the logger directly, but to the dual_stderr_output
             # This way als console output includign excpetions will be redirceted to the log file
-
-            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            parent_dir = os.path.dirname(log_file)
+            # create parent dir if the path is more than just a file name
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
             file_handler = logging.FileHandler(log_file)
 
             self.dual_stderr_output.set_file_handler_stream(file_handler.stream)
