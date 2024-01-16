@@ -520,13 +520,11 @@ class AuroraInferer(AbstractInferer):
         )
 
         if prev_mode != self.inference_mode:
-            self.log.info(
-                "No loaded compatible load model found. Loading Model and weights"
-            )
+            self.log.info("No loaded compatible model found. Loading Model and weights")
             self.model = self._get_model()
         else:
             self.log.info(
-                f"Same inference mode {self.inference_mode}. Re-using previously loaded model"
+                f"Same inference mode {self.inference_mode} as previous infer call. Re-using loaded model"
             )
 
         self.log.info("Setting up Dataloader")
