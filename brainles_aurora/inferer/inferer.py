@@ -59,11 +59,11 @@ class AbstractInferer(ABC):
         self.log = self._setup_logger(log_file=None)
 
         # download weights if not present
-        self.lib_path: str = os.path.dirname(os.path.abspath(__file__))
+        self.lib_path: str = Path(os.path.dirname(os.path.abspath(__file__)))
 
-        self.model_weights_folder = Path(self.lib_path).parent / "model_weights"
+        self.model_weights_folder = self.lib_path.parent / "model_weights"
         if not self.model_weights_folder.exists():
-            download_model_weights(target_folder=self.lib_path)
+            download_model_weights(target_folder=str(self.lib_path.parent))
 
     def _setup_logger(self, log_file: str | Path | None = None) -> Logger:
         """Setup a logger with an optional log file.
