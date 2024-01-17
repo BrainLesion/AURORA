@@ -33,8 +33,6 @@ class AuroraInfererConfig(BaseConfig):
         sliding_window_overlap (float, optional): Overlap ratio for sliding window inference. Defaults to 0.5.
         crop_size (Tuple[int, int, int], optional): Crop size for sliding window inference. Defaults to (192, 192, 32).
         model_selection (ModelSelection, optional): Model selection strategy. Defaults to ModelSelection.BEST.
-        include_whole_network_in_numpy_output_mode (bool, optional): Whether to include the whole network in numpy output mode. Defaults to False.
-        include_metastasis_network_in_numpy_output_mode (bool, optional): Whether to include the metastasis network in numpy output mode. Defaults to False.
     """
 
     tta: bool = True
@@ -44,5 +42,3 @@ class AuroraInfererConfig(BaseConfig):
     sliding_window_overlap: float = 0.5
     crop_size: Tuple[int, int, int] = (192, 192, 32)
     model_selection: ModelSelection = ModelSelection.BEST
-    include_whole_network_in_numpy_output_mode: bool = False
-    include_metastasis_network_in_numpy_output_mode: bool = False

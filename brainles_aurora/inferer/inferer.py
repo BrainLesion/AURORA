@@ -449,11 +449,6 @@ class AuroraInferer(AbstractInferer):
                     onehot_model_outputs_CHWD=outputs,
                 )
                 if self.config.output_mode == DataMode.NUMPY:
-                    # rm whole/ metastasus network if not requested
-                    if not self.config.include_whole_network_in_numpy_output_mode:
-                        _ = postprocessed_data.pop(Output.WHOLE_NETWORK)
-                    if not self.config.include_metastasis_network_in_numpy_output_mode:
-                        _ = postprocessed_data.pop(Output.METASTASIS_NETWORK)
                     return postprocessed_data
                 else:
                     self._save_as_nifti(postproc_data=postprocessed_data)
@@ -476,8 +471,8 @@ class AuroraInferer(AbstractInferer):
         t2: str | Path | np.ndarray | None = None,
         fla: str | Path | np.ndarray | None = None,
         segmentation_file: str | Path | None = None,
-        whole_network_file: str | Path | None = None,
-        metastasis_network_file: str | Path | None = None,
+        whole_tumor_unbinarized_floats_file: str | Path | None = None,
+        metastasis_unbinarized_floats_file: str | Path | None = None,
         log_file: str | Path | None = None,
     ) -> Dict[str, np.ndarray] | None:
         """Perform inference on the provided images.
@@ -491,8 +486,8 @@ class AuroraInferer(AbstractInferer):
             ### The following file paths are only required when in Nifti output mode:
 
             segmentation_file (str | Path | None, optional): Path where the segementation file should be stored. Defaults to None. Should be a nifti file. Defaults internally to a './segmentation.nii.gz'.
-            whole_network_file (str | Path | None, optional): Path. Defaults to None.
-            metastasis_network_file (str | Path | None, optional): _description_. Defaults to None.
+            whole_tumor_unbinarized_floats_file (str | Path | None, optional): Path. Defaults to None.
+            metastasis_unbinarized_floats_file (str | Path | None, optional): _description_. Defaults to None.
 
             ### Custom log file path. BY default this is set internally to the same path as segmentation_file with the extension .log or to ./{self.__class__.__name__}.log if no segmentation_file is provided
 
@@ -528,7 +523,7 @@ class AuroraInferer(AbstractInferer):
             self.log.info(
                 f"Same inference mode {self.inference_mode} as previous infer call. Re-using loaded model"
             )
-
+        # self.model.eval()
         self.log.info("Setting up Dataloader")
         self.data_loader = self._get_data_loader()
 
@@ -542,8 +537,8 @@ class AuroraInferer(AbstractInferer):
                 )
             self.output_file_mapping = {
                 Output.SEGMENTATION: segmentation_file or default_segmentation_path,
-                Output.WHOLE_NETWORK: whole_network_file,
-                Output.METASTASIS_NETWORK: metastasis_network_file,
+                Output.WHOLE_NETWORK: whole_tumor_unbinarized_floats_file,
+                Output.METASTASIS_NETWORK: metastasis_unbinarized_floats_file,
             }
 
         ########

@@ -22,17 +22,36 @@ def load_np_from_nifti(path):
 
 def gpu_nifti():
     config = AuroraInfererConfig(
+        tta=False
+    )  # disable tta for faster inference in this showcase
+
+    # If you don-t have a GPU that supports CUDA use the CPU version: AuroraInferer(config=config)
+    inferer = AuroraGPUInferer(config=config)
+
+    inferer.infer(
         t1=t1,
-        t1c=t1c,
-        t2=t2,
-        fla=fla,
-        output_metastasis_network=True,
-        output_whole_network=True,
+        segmentation_file="test_output/segmentation.nii.gz",
     )
-    inferer = AuroraGPUInferer(
-        config=config,
+
+
+def gpu_nifti_2():
+    config = AuroraInfererConfig(
+        tta=False
+    )  # disable tta for faster inference in this showcase
+
+    # If you don-t have a GPU that supports CUDA use the CPU version: AuroraInferer(config=config)
+    inferer = AuroraGPUInferer(config=config)
+
+    inferer.infer(
+        t1=t1,
+        segmentation_file="test_output/nevergonna_seg.nii.gz",
+        whole_tumor_unbinarized_floats_file="test_output/whole_network.nii.gz",
+        metastasis_unbinarized_floats_file="test_output/metastasis_network.nii.gz",
     )
-    inferer.infer()
+    inferer.infer(
+        t1=t1,
+        segmentation_file="test_output2/randomseg.nii.gz",
+    )
 
 
 def cpu_nifti():
@@ -77,4 +96,4 @@ def gpu_output_np():
 
 
 if __name__ == "__main__":
-    gpu_nifti()
+    gpu_nifti_2()
