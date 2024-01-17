@@ -1,5 +1,6 @@
 [![PyPI version panoptica](https://badge.fury.io/py/brainles-aurora.svg)](https://pypi.python.org/pypi/brainles-aurora/)
 [![Documentation Status](https://readthedocs.org/projects/brainles-aurora/badge/?version=latest)](http://brainles-aurora.readthedocs.io/?badge=latest)
+[![tests](https://github.com/BrainLesion/AURORA/actions/workflows/tests.yml/badge.svg)](https://github.com/BrainLesion/AURORA/actions/workflows/tests.yml)
 
 # AURORA
 
