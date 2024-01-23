@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Tuple
 
 
-from brainles_aurora.inferer.constants import DataMode, ModelSelection
+from brainles_aurora.inferer import DataMode, ModelSelection
 
 
 @dataclass
