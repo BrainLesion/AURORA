@@ -1,8 +1,8 @@
-from brainles_aurora.inferer.constants import DataMode
-from brainles_aurora.inferer.inferer import (
+from brainles_aurora.inferer import (
     AuroraInferer,
     AuroraGPUInferer,
     AuroraInfererConfig,
+    DataMode,
 )
 import os
 from path import Path
@@ -30,7 +30,9 @@ def gpu_nifti():
 
     inferer.infer(
         t1=t1,
-        segmentation_file="test_output/segmentation.nii.gz",
+        segmentation_file="test_output/segmentation_tta.nii.gz",
+        whole_tumor_unbinarized_floats_file="test_output/whole_network_tta.nii.gz",
+        metastasis_unbinarized_floats_file="test_output/metastasis_network_tta.nii.gz",
     )
 
 
@@ -96,4 +98,4 @@ def gpu_output_np():
 
 
 if __name__ == "__main__":
-    gpu_nifti_2()
+    gpu_nifti()
