@@ -434,7 +434,7 @@ class AuroraInferer(AbstractInferer):
         with torch.no_grad():
             self.model.eval()
             self.model = self.model.to(self.device)
-            # loop through batches, only 1 batch!
+            # currently always only 1 batch! TODO: potentialy add support to pass multiple image tuples at once?
             for data in self.data_loader:
                 inputs = data["images"].to(self.device)
 
@@ -445,12 +445,17 @@ class AuroraInferer(AbstractInferer):
                         outputs, data, inferer
                     )
 
+                self.log.info("Post-processing data")
                 postprocessed_data = self._post_process(
                     onehot_model_outputs_CHWD=outputs,
                 )
                 if self.config.output_mode == DataMode.NUMPY:
+                    self.log.info(
+                        "Returning post-processed data as Dict of Numpy arrays"
+                    )
                     return postprocessed_data
                 else:
+                    self.log.info("Saving post-processed data as NIFTI files")
                     self._save_as_nifti(postproc_data=postprocessed_data)
                     return None
 
@@ -506,9 +511,6 @@ class AuroraInferer(AbstractInferer):
         self.log = self._setup_logger(
             log_file=log_file,
         )
-
-        self.log.info(f"Running inference on {self.device}")
-
         # check inputs and get mode , == prev mode => run inference, else load new model
         prev_mode = self.inference_mode
         self.validated_images = self._validate_images(t1=t1, t1c=t1c, t2=t2, fla=fla)
@@ -542,6 +544,7 @@ class AuroraInferer(AbstractInferer):
             }
 
         ########
+        self.log.info(f"Running inference on device := {self.device}")
         out = self._sliding_window_inference()
         self.log.info(f"Finished inference {os.linesep}")
         return out
