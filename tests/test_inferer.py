@@ -3,7 +3,6 @@ from unittest.mock import patch
 import logging
 
 import nibabel as nib
-import numpy as np
 import pytest
 import torch
 

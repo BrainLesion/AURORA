@@ -25,15 +25,20 @@ from monai.transforms import (
 from torch.utils.data import DataLoader
 import uuid
 
-from brainles_aurora.inferer.constants import (
+from brainles_aurora.inferer import (
     IMGS_TO_MODE_DICT,
     DataMode,
     InferenceMode,
     Output,
+    AuroraInfererConfig,
+    BaseConfig,
 )
-from brainles_aurora.aux import turbo_path, DualStdErrOutput
-from brainles_aurora.inferer.dataclasses import AuroraInfererConfig, BaseConfig
-from brainles_aurora.download import download_model_weights
+from brainles_aurora.utils import (
+    turbo_path,
+    DualStdErrOutput,
+    download_model_weights,
+    remove_path_suffixes,
+)
 
 
 class AbstractInferer(ABC):
@@ -502,16 +507,13 @@ class AuroraInferer(AbstractInferer):
             Dict[str, np.ndarray] | None: Post-processed data if output_mode is NUMPY, otherwise the data is saved as a niftis and None is returned.
         """
         # setup logger for inference run
-        if not log_file:
-            log_file = (
-                Path(segmentation_file).with_suffix(".log")
-                if segmentation_file
-                else os.path.abspath(f"./{self.__class__.__name__}.log")
-            )
         self.log = self._setup_logger(
-            log_file=log_file,
+            log_file=remove_path_suffixes(segmentation_file).with_suffix(".log")
+            if segmentation_file
+            else os.path.abspath(f"./{self.__class__.__name__}.log"),
         )
-        # check inputs and get mode , == prev mode => run inference, else load new model
+
+        # check inputs and get mode , if mode == prev mode => run inference, else load new model
         prev_mode = self.inference_mode
         self.validated_images = self._validate_images(t1=t1, t1c=t1c, t2=t2, fla=fla)
         self.inference_mode = self._determine_inference_mode(
