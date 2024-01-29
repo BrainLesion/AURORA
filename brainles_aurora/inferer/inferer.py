@@ -226,12 +226,16 @@ class AuroraInferer(AbstractInferer):
         """
         # init transforms
         transforms = [
-            LoadImageD(keys=["images"])
-            if self.input_mode == DataMode.NIFTI_FILE
-            else None,
-            EnsureChannelFirstd(keys="images")
-            if len(self._get_not_none_files()) == 1
-            else None,
+            (
+                LoadImageD(keys=["images"])
+                if self.input_mode == DataMode.NIFTI_FILE
+                else None
+            ),
+            (
+                EnsureChannelFirstd(keys="images")
+                if len(self._get_not_none_files()) == 1
+                else None
+            ),
             Lambdad(["images"], np.nan_to_num),
             ScaleIntensityRangePercentilesd(
                 keys="images",
@@ -512,9 +516,11 @@ class AuroraInferer(AbstractInferer):
         else:
             # if no log file is provided: set logfile to segmentation filename if provided, else inferer class name
             self.log = self._setup_logger(
-                log_file=remove_path_suffixes(segmentation_file).with_suffix(".log")
-                if segmentation_file
-                else os.path.abspath(f"./{self.__class__.__name__}.log"),
+                log_file=(
+                    remove_path_suffixes(segmentation_file).with_suffix(".log")
+                    if segmentation_file
+                    else os.path.abspath(f"./{self.__class__.__name__}.log")
+                ),
             )
 
         # check inputs and get mode , if mode == prev mode => run inference, else load new model
