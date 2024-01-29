@@ -515,9 +515,11 @@ class AuroraInferer(AbstractInferer):
         else:
             # if no log file is provided: set logfile to segmentation filename if provided, else inferer class name
             self.log = self._setup_logger(
-                log_file=remove_path_suffixes(segmentation_file).with_suffix(".log")
-                if segmentation_file
-                else os.path.abspath(f"./{self.__class__.__name__}.log"),
+                log_file=(
+                    remove_path_suffixes(segmentation_file).with_suffix(".log")
+                    if segmentation_file
+                    else os.path.abspath(f"./{self.__class__.__name__}.log")
+                ),
             )
 
         # check inputs and get mode , if mode == prev mode => run inference, else load new model
