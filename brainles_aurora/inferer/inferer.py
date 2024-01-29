@@ -427,11 +427,11 @@ class AuroraInferer(AbstractInferer):
             Output.METASTASIS_NETWORK: enhancing_out,
         }
 
-    def _sliding_window_inference(self) -> None | Dict[str, np.ndarray]:
+    def _sliding_window_inference(self) -> Dict[str, np.ndarray]:
         """Perform sliding window inference using monai.inferers.SlidingWindowInferer.
 
         Returns:
-            None | Dict[str, np.ndarray]: Post-processed data if output_mode is NUMPY, otherwise the data is saved as a niftis and None is returned.
+            Dict[str, np.ndarray]: Post-processed data
         """
         inferer = SlidingWindowInferer(
             roi_size=self.config.crop_size,  # = patch_size
@@ -461,15 +461,14 @@ class AuroraInferer(AbstractInferer):
                 postprocessed_data = self._post_process(
                     onehot_model_outputs_CHWD=outputs,
                 )
-                if self.config.output_mode == DataMode.NUMPY:
-                    self.log.info(
-                        "Returning post-processed data as Dict of Numpy arrays"
-                    )
-                    return postprocessed_data
-                else:
+
+                # save data to fie if paths are provided
+                if any(self.output_file_mapping.values()):
                     self.log.info("Saving post-processed data as NIFTI files")
                     self._save_as_nifti(postproc_data=postprocessed_data)
-                    return None
+
+                self.log.info("Returning post-processed data as Dict of Numpy arrays")
+                return postprocessed_data
 
     def _configure_device(self) -> torch.device:
         """Configure the device for inference.
@@ -511,7 +510,7 @@ class AuroraInferer(AbstractInferer):
             log_file (str | Path | None, optional): _description_. Defaults to None.
 
         Returns:
-            Dict[str, np.ndarray] | None: Post-processed data if output_mode is NUMPY, otherwise the data is saved as a niftis and None is returned.
+            Dict[str, np.ndarray]: Post-processed data.
         """
         # setup logger for inference run
         if log_file:
@@ -545,18 +544,11 @@ class AuroraInferer(AbstractInferer):
         self.data_loader = self._get_data_loader()
 
         # setup output file paths
-        if self.config.output_mode == DataMode.NIFTI_FILE:
-            # TODO add error handling to ensure file extensions present
-            if not segmentation_file:
-                default_segmentation_path = os.path.abspath("./segmentation.nii.gz")
-                self.log.warning(
-                    f"No segmentation file name provided, using default path: {default_segmentation_path}"
-                )
-            self.output_file_mapping = {
-                Output.SEGMENTATION: segmentation_file or default_segmentation_path,
-                Output.WHOLE_NETWORK: whole_tumor_unbinarized_floats_file,
-                Output.METASTASIS_NETWORK: metastasis_unbinarized_floats_file,
-            }
+        self.output_file_mapping = {
+            Output.SEGMENTATION: segmentation_file,
+            Output.WHOLE_NETWORK: whole_tumor_unbinarized_floats_file,
+            Output.METASTASIS_NETWORK: metastasis_unbinarized_floats_file,
+        }
 
         ########
         self.log.info(f"Running inference on device := {self.device}")

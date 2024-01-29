@@ -11,11 +11,9 @@ class BaseConfig:
     """Base configuration for the Aurora model inferer.
 
     Attributes:
-        output_mode (DataMode, optional): Output mode for the inference results. Defaults to DataMode.NIFTI_FILE.
         log_level (int | str, optional): Logging level. Defaults to logging.INFO.
     """
 
-    output_mode: DataMode = DataMode.NIFTI_FILE
     log_level: int | str = logging.INFO
 
 
@@ -24,7 +22,6 @@ class AuroraInfererConfig(BaseConfig):
     """Configuration for the Aurora model inferer.
 
     Attributes:
-        output_mode (DataMode, optional): Output mode for the inference results. Defaults to DataMode.NIFTI_FILE.
         log_level (int | str, optional): Logging level. Defaults to logging.INFO.
         tta (bool, optional): Whether to apply test-time augmentations. Defaults to True.
         sliding_window_batch_size (int, optional): Batch size for sliding window inference. Defaults to 1.

@@ -76,7 +76,6 @@ def cpu_nifti():
 def gpu_np():
     config = AuroraInfererConfig(
         tta=False,
-        output_mode=DataMode.NUMPY,
     )  # disable tta for faster inference in this showcase
 
     # If you don-t have a GPU that supports CUDA use the CPU version: AuroraInferer(config=config)
@@ -95,7 +94,6 @@ def gpu_output_np():
         t1c=load_np_from_nifti(t1c),
         t2=load_np_from_nifti(t2),
         fla=load_np_from_nifti(fla),
-        output_mode=DataMode.NUMPY,
     )
     inferer = AuroraGPUInferer(
         config=config,
