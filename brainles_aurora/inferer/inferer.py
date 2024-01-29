@@ -226,15 +226,19 @@ class AuroraInferer(AbstractInferer):
         """
         # init transforms
         transforms = [
-            LoadImageD(keys=["images"])
-            if self.input_mode == DataMode.NIFTI_FILE
-            else None,
-            EnsureChannelFirstd(keys="images")
-            if (
-                len(self._get_not_none_files()) == 1
-                and self.input_mode == DataMode.NIFTI_FILE
-            )
-            else None,
+            (
+                LoadImageD(keys=["images"])
+                if self.input_mode == DataMode.NIFTI_FILE
+                else None
+            ),
+            (
+                EnsureChannelFirstd(keys="images")
+                if (
+                    len(self._get_not_none_files()) == 1
+                    and self.input_mode == DataMode.NIFTI_FILE
+                )
+                else None
+            ),
             Lambdad(["images"], np.nan_to_num),
             ScaleIntensityRangePercentilesd(
                 keys="images",
