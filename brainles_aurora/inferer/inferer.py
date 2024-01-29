@@ -59,7 +59,8 @@ class AbstractInferer(ABC):
         self.config = config
 
         # setup logger
-        self.dual_stderr_output = DualStdErrOutput(sys.stderr)
+        self.dual_stderr_output = DualStdErrOutput(sys.__stderr__)
+        # redirect stderr to dual_stderr_output tp capture errors in log file
         sys.stderr = self.dual_stderr_output
         self.log = self._setup_logger(log_file=None)
 
@@ -92,13 +93,14 @@ class AbstractInferer(ABC):
 
         if log_file:
             # Create a file handler. We dont add it to the logger directly, but to the dual_stderr_output
-            # This way als console output includign excpetions will be redirceted to the log file
+            # This way als console output including exceptions will be redirected to the log file
             parent_dir = os.path.dirname(log_file)
             # create parent dir if the path is more than just a file name
             if parent_dir:
                 os.makedirs(parent_dir, exist_ok=True)
             file_handler = logging.FileHandler(log_file)
-
+            # file_handler.setFormatter(default_formatter)
+            # logger.addHandler(file_handler)
             self.dual_stderr_output.set_file_handler_stream(file_handler.stream)
             logger.info(f"Logging to: {log_file}")
 
@@ -490,7 +492,7 @@ class AuroraInferer(AbstractInferer):
         whole_tumor_unbinarized_floats_file: str | Path | None = None,
         metastasis_unbinarized_floats_file: str | Path | None = None,
         log_file: str | Path | None = None,
-    ) -> Dict[str, np.ndarray] | None:
+    ) -> Dict[str, np.ndarray]:
         """Perform inference on the provided images.
 
         Args:
@@ -524,7 +526,10 @@ class AuroraInferer(AbstractInferer):
                     else os.path.abspath(f"./{self.__class__.__name__}.log")
                 ),
             )
+        self.log.info(f"Infer with config: {self.config} and device: {self.device}")
 
+        ###DEBUG
+        print(self.log.handlers)
         # check inputs and get mode , if mode == prev mode => run inference, else load new model
         prev_mode = self.inference_mode
         self.validated_images = self._validate_images(t1=t1, t1c=t1c, t2=t2, fla=fla)
@@ -592,7 +597,7 @@ class AuroraGPUInferer(AuroraInferer):
         ), "No cuda device available while using GPUInferer"
 
         device = torch.device("cuda")
-        self.log.info(f"Using device: {device}")
+        self.log.info(f"Set torch device: {device}")
 
         # clean memory
         torch.cuda.empty_cache()
