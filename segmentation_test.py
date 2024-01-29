@@ -75,15 +75,18 @@ def cpu_nifti():
 
 def gpu_np():
     config = AuroraInfererConfig(
-        t1=load_np_from_nifti(t1),
-        t1c=load_np_from_nifti(t1c),
-        t2=load_np_from_nifti(t2),
-        fla=load_np_from_nifti(fla),
+        tta=False,
+        output_mode=DataMode.NUMPY,
+    )  # disable tta for faster inference in this showcase
+
+    # If you don-t have a GPU that supports CUDA use the CPU version: AuroraInferer(config=config)
+    inferer = AuroraGPUInferer(config=config)
+
+    t1_np = load_np_from_nifti(t1)
+    print(t1_np.shape)
+    inferer.infer(
+        t1=t1_np,
     )
-    inferer = AuroraGPUInferer(
-        config=config,
-    )
-    inferer.infer()
 
 
 def gpu_output_np():
@@ -102,4 +105,4 @@ def gpu_output_np():
 
 
 if __name__ == "__main__":
-    gpu_nifti()
+    gpu_np()
