@@ -30,9 +30,13 @@ def gpu_nifti():
 
     inferer.infer(
         t1=t1,
-        segmentation_file="test_output/segmentation_tta.nii.gz",
+        t1c=t1c,
+        t2=t2,
+        fla=fla,
+        segmentation_file="test_output/segmentation_tta.nii",
         whole_tumor_unbinarized_floats_file="test_output/whole_network_tta.nii.gz",
         metastasis_unbinarized_floats_file="test_output/metastasis_network_tta.nii.gz",
+        log_file="test_output/custom_log.log",
     )
 
 

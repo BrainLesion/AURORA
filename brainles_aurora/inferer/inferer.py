@@ -507,11 +507,15 @@ class AuroraInferer(AbstractInferer):
             Dict[str, np.ndarray] | None: Post-processed data if output_mode is NUMPY, otherwise the data is saved as a niftis and None is returned.
         """
         # setup logger for inference run
-        self.log = self._setup_logger(
-            log_file=remove_path_suffixes(segmentation_file).with_suffix(".log")
-            if segmentation_file
-            else os.path.abspath(f"./{self.__class__.__name__}.log"),
-        )
+        if log_file:
+            self.log = self._setup_logger(log_file=log_file)
+        else:
+            # if no log file is provided: set logfile to segmentation filename if provided, else inferer class name
+            self.log = self._setup_logger(
+                log_file=remove_path_suffixes(segmentation_file).with_suffix(".log")
+                if segmentation_file
+                else os.path.abspath(f"./{self.__class__.__name__}.log"),
+            )
 
         # check inputs and get mode , if mode == prev mode => run inference, else load new model
         prev_mode = self.inference_mode
