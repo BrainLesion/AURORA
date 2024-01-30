@@ -95,7 +95,7 @@ class AbstractInferer(ABC):
 
     def _setup_logger(self) -> Logger:
         """Setup the logger for the inferer and overwrite system hooks to add logging for exceptions and signals."""
-        config_file = Path("brainles_aurora/inferer/log_config.json")
+        config_file = Path(__file__).parent / "log_config.json"
         with open(config_file) as f_in:
             log_config = json.load(f_in)
         logging.config.dictConfig(log_config)
