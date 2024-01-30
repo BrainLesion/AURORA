@@ -79,10 +79,6 @@ class TestAuroraInferer:
         with pytest.raises(NotImplementedError):
             mode = mock_inferer._determine_inference_mode(images=images)
 
-    def test_setup_logger(self, mock_inferer):
-        logger = mock_inferer._setup_logger()
-        assert isinstance(logger, logging.Logger)
-
     def test_infer(self, mock_inferer, t1_path):
         with patch.object(mock_inferer, "_sliding_window_inference", return_value=None):
             mock_inferer.infer(t1=t1_path)
