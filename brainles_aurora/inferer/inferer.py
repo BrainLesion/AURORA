@@ -36,7 +36,6 @@ from brainles_aurora.inferer import (
 )
 from brainles_aurora.utils import (
     turbo_path,
-    DualStdErrOutput,
     download_model_weights,
     remove_path_suffixes,
 )
@@ -120,7 +119,7 @@ class AbstractInferer(ABC):
 
         def signal_handler(sig, frame):
             signame = signal.Signals(sig).name
-            logging.error(f"Received signal {sig} ({signame}), exiting...")
+            logger.error(f"Received signal {sig} ({signame}), exiting...")
             sys.exit(0)
 
         sys.excepthook = exception_handler
