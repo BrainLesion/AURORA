@@ -16,19 +16,19 @@ from brainles_aurora.inferer import (
 class TestAuroraInferer:
     @pytest.fixture
     def t1_path(self):
-        return "example_data/BraTS-MET-00110-000-t1n.nii.gz"
+        return "example/data/BraTS-MET-00110-000-t1n.nii.gz"
 
     @pytest.fixture
     def t1c_path(self):
-        return "example_data/BraTS-MET-00110-000-t1c.nii.gz"
+        return "example/data/BraTS-MET-00110-000-t1c.nii.gz"
 
     @pytest.fixture
     def t2_path(self):
-        return "example_data/BraTS-MET-00110-000-t2w.nii.gz"
+        return "example/data/BraTS-MET-00110-000-t2w.nii.gz"
 
     @pytest.fixture
     def fla_path(self):
-        return "example_data/BraTS-MET-00110-000-t2f.nii.gz"
+        return "example/data/BraTS-MET-00110-000-t2f.nii.gz"
 
     @pytest.fixture
     def mock_config(self):
