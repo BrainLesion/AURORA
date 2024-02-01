@@ -11,10 +11,10 @@ class BaseConfig:
     """Base configuration for the Aurora model inferer.
 
     Attributes:
-        log_level (int | str, optional): Logging level. Defaults to logging.INFO.
+        log_level (int, optional): Logging level. Defaults to logging.INFO.
     """
 
-    log_level: int | str = logging.INFO
+    log_level: int = logging.INFO
 
 
 @dataclass

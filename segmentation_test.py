@@ -82,7 +82,6 @@ def gpu_np():
     inferer = AuroraGPUInferer(config=config)
 
     t1_np = load_np_from_nifti(t1)
-    print(t1_np.shape)
     inferer.infer(
         t1=t1_np,
     )
@@ -99,8 +98,7 @@ def gpu_output_np():
         config=config,
     )
     data = inferer.infer()
-    print(data)
 
 
 if __name__ == "__main__":
-    gpu_np()
+    gpu_nifti_2()
