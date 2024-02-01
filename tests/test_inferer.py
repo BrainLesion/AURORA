@@ -54,7 +54,10 @@ class TestAuroraInferer:
         mock_inferer,
     ):
         images = mock_inferer._validate_images(
-            t1=t1_path, t1c=t1c_path, t2=t2_path, fla=fla_path
+            t1=t1_path,
+            t1c=t1c_path,
+            t2=t2_path,
+            fla=fla_path,
         )
         assert len(images) == 4
         assert all(isinstance(img, Path) for img in images)
