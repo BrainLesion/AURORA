@@ -3,13 +3,15 @@ from unittest.mock import patch
 import logging
 
 import nibabel as nib
-import numpy as np
 import pytest
 import torch
 
-from brainles_aurora.inferer.constants import InferenceMode
-from brainles_aurora.inferer.dataclasses import AuroraInfererConfig
-from brainles_aurora.inferer.inferer import AuroraInferer, AuroraGPUInferer
+from brainles_aurora.inferer import (
+    InferenceMode,
+    AuroraInfererConfig,
+    AuroraInferer,
+    AuroraGPUInferer,
+)
 
 
 class TestAuroraInferer:

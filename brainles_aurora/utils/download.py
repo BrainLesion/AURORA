@@ -1,6 +1,5 @@
 # copied from https://github.com/Nordgaren/Github-Folder-Downloader/blob/master/gitdl.py
 import os
-import shutil as sh
 
 import requests
 from github import ContentFile, Github, Repository

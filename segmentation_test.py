@@ -1,8 +1,8 @@
-from brainles_aurora.inferer.constants import DataMode
-from brainles_aurora.inferer.inferer import (
+from brainles_aurora.inferer import (
     AuroraInferer,
     AuroraGPUInferer,
     AuroraInfererConfig,
+    DataMode,
 )
 import os
 from path import Path
@@ -30,7 +30,13 @@ def gpu_nifti():
 
     inferer.infer(
         t1=t1,
-        segmentation_file="test_output/segmentation.nii.gz",
+        t1c=t1c,
+        t2=t2,
+        fla=fla,
+        segmentation_file="test_output/segmentation_tta.nii",
+        whole_tumor_unbinarized_floats_file="test_output/whole_network_tta.nii.gz",
+        metastasis_unbinarized_floats_file="test_output/metastasis_network_tta.nii.gz",
+        log_file="test_output/custom_log.log",
     )
 
 
@@ -69,15 +75,17 @@ def cpu_nifti():
 
 def gpu_np():
     config = AuroraInfererConfig(
-        t1=load_np_from_nifti(t1),
-        t1c=load_np_from_nifti(t1c),
-        t2=load_np_from_nifti(t2),
-        fla=load_np_from_nifti(fla),
+        tta=False,
+    )  # disable tta for faster inference in this showcase
+
+    # If you don-t have a GPU that supports CUDA use the CPU version: AuroraInferer(config=config)
+    inferer = AuroraGPUInferer(config=config)
+
+    t1_np = load_np_from_nifti(t1)
+    print(t1_np.shape)
+    inferer.infer(
+        t1=t1_np,
     )
-    inferer = AuroraGPUInferer(
-        config=config,
-    )
-    inferer.infer()
 
 
 def gpu_output_np():
@@ -86,7 +94,6 @@ def gpu_output_np():
         t1c=load_np_from_nifti(t1c),
         t2=load_np_from_nifti(t2),
         fla=load_np_from_nifti(fla),
-        output_mode=DataMode.NUMPY,
     )
     inferer = AuroraGPUInferer(
         config=config,
@@ -96,4 +103,4 @@ def gpu_output_np():
 
 
 if __name__ == "__main__":
-    gpu_nifti_2()
+    gpu_np()
