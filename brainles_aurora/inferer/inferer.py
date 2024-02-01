@@ -35,10 +35,11 @@ from brainles_aurora.inferer import (
     BaseConfig,
 )
 from brainles_aurora.utils import (
-    turbo_path,
     download_model_weights,
     remove_path_suffixes,
 )
+
+from auxiliary.turbopath import turbo_path
 
 logger = logging.getLogger(__name__)
 
