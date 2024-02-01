@@ -186,7 +186,7 @@ class AuroraInferer(AbstractInferer):
                     f"File {data} must be a nifti file with extension .nii or .nii.gz"
                 )
             self.input_mode = DataMode.NIFTI_FILE
-            return turbopath(data)
+            return Path(turbopath(data))
 
         images = [
             _validate_image(img)
