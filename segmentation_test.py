@@ -2,7 +2,6 @@ from brainles_aurora.inferer import (
     AuroraInferer,
     AuroraGPUInferer,
     AuroraInfererConfig,
-    DataMode,
 )
 import os
 from path import Path
