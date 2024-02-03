@@ -25,22 +25,24 @@ BrainLes features Jupyter Notebook [tutorials](https://github.com/BrainLesion/tu
 
 ## Citation
 Please support our development by citing the following manuscripts:
+
+[Identifying core MRI sequences for reliable automatic brain metastasis segmentation](https://www.sciencedirect.com/science/article/pii/S016781402389795X)
+
 ```
-@article {Buchner2023.05.02.23289342,
-	author = {Josef A Buchner and Jan C Peeken and Lucas Etzel and Ivan Ezhov and Michael Mayinger and Sebastian M Christ and Thomas B Brunner and Andrea Wittig and Bj{\"o}rn Menze and Claus Zimmer and Bernhard Meyer and Matthias Guckenberger and Nicolaus Andratschke and Rami A El Shafie and J{\"u}rgen Debus and Susanne Rogers and Oliver Riesterer and Katrin Schulze and Horst J Feldmann and Oliver Blanck and Constantinos Zamboglou and Konstantinos Ferentinos and Angelika Bilger and Anca L Grosu and Robert Wolff and Jan S Kirschke and Kerstin A Eitz and Stephanie E Combs and Denise Bernhardt and Daniel R{\"u}ckert and Marie Piraud and Benedikt Wiestler and Florian Kofler},
-	title = {Identifying core MRI sequences for reliable automatic brain metastasis segmentation},
-	elocation-id = {2023.05.02.23289342},
-	year = {2023},
-	doi = {10.1101/2023.05.02.23289342},
-	publisher = {Cold Spring Harbor Laboratory Press},
-	abstract = {Background: Many automatic approaches to brain tumor segmentation employ multiple magnetic resonance imaging (MRI) sequences. The goal of this project was to compare different combinations of input sequences to determine which MRI sequences are needed for effective automated brain metastasis (BM) segmentation. Methods: We analyzed preoperative imaging (T1-weighted sequence without and with contrast- enhancement (T1/T1-CE), T2-weighted sequence (T2), and T2 fluid-attenuated inversion recovery (T2-FLAIR) sequence) from 333 patients with BMs from six centers. A baseline 3D U-Net with all four sequences and six U-Nets with plausible sequence combinations (T1-CE, T1, T2-FLAIR, T1-CE+T2-FLAIR, T1-CE+T1+T2-FLAIR, T1- CE+T1) were trained on 239 patients from two centers and subsequently tested on an external cohort of 94 patients from four centers. Results: The model based on T1-CE alone achieved the best segmentation performance for BM segmentation with a median Dice similarity coefficient (DSC) of 0.96. Models trained without T1-CE performed worse (T1-only: DSC = 0.70 and T2- FLAIR-only: DSC = 0.72). For edema segmentation, models that included both T1-CE and T2-FLAIR performed best (DSC = 0.93), while the remaining four models without simultaneous inclusion of these both sequences reached a median DSC of 0.81-0.89. Conclusions: A T1-CE-only protocol suffices for the segmentation of BMs. The combination of T1-CE and T2-FLAIR is important for edema segmentation. Missing either T1-CE or T2-FLAIR decreases performance. These findings may improve imaging routines by omitting unnecessary sequences, thus allowing for faster procedures in daily clinical practice while enabling optimal neural network-based target definitions.Competing Interest StatementThe authors have declared no competing interest.Funding StatementThis work was funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation - PE 3303/1-1 (JCP), WI 4936/4-1 (BW)).Author DeclarationsI confirm all relevant ethical guidelines have been followed, and any necessary IRB and/or ethics committee approvals have been obtained.YesThe details of the IRB/oversight body that provided approval or exemption for the research described are given below:The ethics committee of Technical University of Munich gave ethical approval for this work (119/19 S-SR; 466/16 S)I confirm that all necessary patient/participant consent has been obtained and the appropriate institutional forms have been archived, and that any patient/participant/sample identifiers included were not known to anyone (e.g., hospital staff, patients or participants themselves) outside the research group so cannot be used to identify individuals.YesI understand that all clinical trials and any other prospective interventional studies must be registered with an ICMJE-approved registry, such as ClinicalTrials.gov. I confirm that any such study reported in the manuscript has been registered and the trial registration ID is provided (note: if posting a prospective study registered retrospectively, please provide a statement in the trial ID field explaining why the study was not registered in advance).Yes I have followed all appropriate research reporting guidelines, such as any relevant EQUATOR Network research reporting checklist(s) and other pertinent material, if applicable.YesThe datasets generated and analyzed during the current study are not available.},
-	URL = {https://www.medrxiv.org/content/early/2023/05/02/2023.05.02.23289342},
-	eprint = {https://www.medrxiv.org/content/early/2023/05/02/2023.05.02.23289342.full.pdf},
-	journal = {medRxiv}
+@article{buchner2023identifying,
+  title={Identifying core MRI sequences for reliable automatic brain metastasis segmentation},
+  author={Buchner, Josef A and Peeken, Jan C and Etzel, Lucas and Ezhov, Ivan and Mayinger, Michael and Christ, Sebastian M and Brunner, Thomas B and Wittig, Andrea and Menze, Bjoern H and Zimmer, Claus and others},
+  journal={Radiotherapy and Oncology},
+  volume={188},
+  pages={109901},
+  year={2023},
+  publisher={Elsevier}
 }
 ```
 
-also consider citing the original AURORA manuscript, especially when using the `vanilla` model: [Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
+also consider citing the original AURORA manuscript, especially when using the `vanilla` model:
+
+[Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
 
 ```
 @article{buchner2022development,
