@@ -1,25 +1,4 @@
 from pathlib import Path
-import os
-from typing import IO
-import sys
-
-
-def turbo_path(path: str | Path) -> Path:
-    """Make path absolute and normed
-
-    Args:
-        path (str | Path): input path
-
-    Returns:
-        Path: absolute and normed path
-    """
-    return Path(
-        os.path.normpath(
-            os.path.abspath(
-                path,
-            )
-        )
-    )
 
 
 def remove_path_suffixes(path: Path | str) -> Path:

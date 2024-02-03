@@ -2,7 +2,6 @@ from brainles_aurora.inferer import (
     AuroraInferer,
     AuroraGPUInferer,
     AuroraInfererConfig,
-    DataMode,
 )
 import os
 from path import Path
@@ -10,10 +9,10 @@ import nibabel as nib
 
 BASE_PATH = Path(os.path.abspath(__file__)).parent
 
-t1 = BASE_PATH / "example_data/BraTS-MET-00110-000-t1n.nii.gz"
-t1c = BASE_PATH / "example_data/BraTS-MET-00110-000-t1c.nii.gz"
-t2 = BASE_PATH / "example_data/BraTS-MET-00110-000-t2w.nii.gz"
-fla = BASE_PATH / "example_data/BraTS-MET-00110-000-t2f.nii.gz"
+t1 = BASE_PATH / "example/data/BraTS-MET-00110-000-t1n.nii.gz"
+t1c = BASE_PATH / "example/data/BraTS-MET-00110-000-t1c.nii.gz"
+t2 = BASE_PATH / "example/data/BraTS-MET-00110-000-t2w.nii.gz"
+fla = BASE_PATH / "example/data/BraTS-MET-00110-000-t2f.nii.gz"
 
 
 def load_np_from_nifti(path):

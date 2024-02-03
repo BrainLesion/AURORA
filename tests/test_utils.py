@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from brainles_aurora.utils import remove_path_suffixes
 

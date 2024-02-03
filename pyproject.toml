@@ -48,6 +48,7 @@ numpy = ">=1.23.0"
 PyGithub = "^1.57"
 tqdm = "^4.64.1"
 path = "^16.2.0"
+auxiliary ="^0.0.40"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"

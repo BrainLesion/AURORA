@@ -35,10 +35,11 @@ from brainles_aurora.inferer import (
     BaseConfig,
 )
 from brainles_aurora.utils import (
-    turbo_path,
     download_model_weights,
     remove_path_suffixes,
 )
+
+from auxiliary.turbopath import turbopath
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ class AuroraInferer(AbstractInferer):
                     f"File {data} must be a nifti file with extension .nii or .nii.gz"
                 )
             self.input_mode = DataMode.NIFTI_FILE
-            return turbo_path(data)
+            return Path(turbopath(data))
 
         images = [
             _validate_image(img)
