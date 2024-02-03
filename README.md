@@ -26,9 +26,7 @@ further details in requirements.txt
 BrainLes features Jupyter Notebook [tutorials](https://github.com/BrainLesion/tutorials/tree/main/AURORA) with usage instructions.
 
 ## Citation
-
-when using the software please cite TODO
-
+Please support our development by citing the following manuscripts:
 ```
 @article {Buchner2023.05.02.23289342,
 	author = {Josef A Buchner and Jan C Peeken and Lucas Etzel and Ivan Ezhov and Michael Mayinger and Sebastian M Christ and Thomas B Brunner and Andrea Wittig and Bj{\"o}rn Menze and Claus Zimmer and Bernhard Meyer and Matthias Guckenberger and Nicolaus Andratschke and Rami A El Shafie and J{\"u}rgen Debus and Susanne Rogers and Oliver Riesterer and Katrin Schulze and Horst J Feldmann and Oliver Blanck and Constantinos Zamboglou and Konstantinos Ferentinos and Angelika Bilger and Anca L Grosu and Robert Wolff and Jan S Kirschke and Kerstin A Eitz and Stephanie E Combs and Denise Bernhardt and Daniel R{\"u}ckert and Marie Piraud and Benedikt Wiestler and Florian Kofler},
@@ -44,7 +42,7 @@ when using the software please cite TODO
 }
 ```
 
-also consider citing the original AURORA manuscript: [Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
+also consider citing the original AURORA manuscript when using the `vanilla` model: [Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
 
 ```
 @article{buchner2022development,
