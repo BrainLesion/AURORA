@@ -18,9 +18,7 @@ pip install brainles-aurora
 
 - CUDA 11.4+ (https://developer.nvidia.com/cuda-toolkit)
 - Python 3.10+
-- GPU with at least 8GB of VRAM
-
-further details in requirements.txt
+- GPU with CUDA support and at least 8GB of VRAM
 
 ## Usage
 BrainLes features Jupyter Notebook [tutorials](https://github.com/BrainLesion/tutorials/tree/main/AURORA) with usage instructions.
@@ -42,7 +40,7 @@ Please support our development by citing the following manuscripts:
 }
 ```
 
-also consider citing the original AURORA manuscript when using the `vanilla` model: [Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
+also consider citing the original AURORA manuscript, especially when using the `vanilla` model: [Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
 
 ```
 @article{buchner2022development,
@@ -53,6 +51,7 @@ also consider citing the original AURORA manuscript when using the `vanilla` mod
   publisher={Elsevier}
 }
 ```
+
 
 ## Licensing
 
