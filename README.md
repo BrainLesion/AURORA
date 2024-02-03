@@ -3,14 +3,12 @@
 [![tests](https://github.com/BrainLesion/AURORA/actions/workflows/tests.yml/badge.svg)](https://github.com/BrainLesion/AURORA/actions/workflows/tests.yml)
 
 # AURORA
-
-Deep learning models for the manuscript
-
-[Identifying core MRI sequences for reliable automatic brain metastasis segmentation](https://www.medrxiv.org/content/10.1101/2023.05.02.23289342v1)
+Deep learning models for brain cancer metastasis segmentation based on the manuscripts:
+* [Identifying core MRI sequences for reliable automatic brain metastasis segmentation](https://www.medrxiv.org/content/10.1101/2023.05.02.23289342v1)
+* [Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
 
 ## Installation
-
-With a Python 3.10+ environment you can install directly from [pypi.org](https://pypi.org/project/brainles-aurora/):
+With a Python 3.10+ environment, you can install directly from [pypi.org](https://pypi.org/project/brainles-aurora/):
 
 ```
 pip install brainles-aurora
@@ -25,26 +23,7 @@ pip install brainles-aurora
 further details in requirements.txt
 
 ## Usage
-
-**Tutorial.ipynb**: Step-by-step example of project setup and segmentation of supplied example data ([BraTS-METS](https://doi.org/10.48550/arXiv.2306.00838))
-
-**run_inference_cli.py**: Simple command-line implementation:
-
-This command will list all available options:
-
-    python3 /run_inference_cli.py --help
-
-**run_inference.py**: Example script for single inference. More customization possible.
-
-**_Input: t1_file, t1c_file, t2_file, fla_file_**
-
-All 4 input files must be nifti (nii.gz) files containing 3D MRIs. Please ensure that all input images are correctly preprocessed (skullstripped, co-registered, registered on SRI-24). You can use [BraTS Toolkit](https://github.com/neuronflow/BraTS-Toolkit) for preprocessing (please follow the instructions [here](https://github.com/neuronflow/BraTS-Toolkit)).
-
-**_Output: segmentation_file_**
-
-Add path to your desired output folder.
-
-**_optional Output: whole_network_outputs_file, enhancing_network_outputs_file_**
+BrainLes features Jupyter Notebook [tutorials](https://github.com/BrainLesion/tutorials/tree/main/AURORA) with usage instructions.
 
 ## Citation
 
@@ -76,11 +55,6 @@ also consider citing the original AURORA manuscript: [Development and external v
   publisher={Elsevier}
 }
 ```
-
-## Four Sequences
-
-If you have all four MR sequences (T1, T1c, T2, FLAIR) consider using:
-https://github.com/neuronflow/AURORA
 
 ## Licensing
 
