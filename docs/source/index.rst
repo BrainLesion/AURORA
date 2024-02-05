@@ -25,7 +25,8 @@ Indices and tables
 
 .. toctree::
    :maxdepth: 2
-   :caption: aurora:
+   :caption: Contents:
 
-   aurora.rst
+   inferer
+   utils
 

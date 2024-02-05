@@ -518,16 +518,10 @@ class AuroraInferer(AbstractInferer):
             t1c (str | Path | np.ndarray | None, optional): T1C modality. Defaults to None.
             t2 (str | Path | np.ndarray | None, optional): T2 modality. Defaults to None.
             fla (str | Path | np.ndarray | None, optional): FLAIR modality. Defaults to None.
-
-            ### The following file paths are only required when in Nifti output mode:
-
             segmentation_file (str | Path | None, optional): Path where the segementation file should be stored. Defaults to None. Should be a nifti file. Defaults internally to a './segmentation.nii.gz'.
             whole_tumor_unbinarized_floats_file (str | Path | None, optional): Path. Defaults to None.
             metastasis_unbinarized_floats_file (str | Path | None, optional): _description_. Defaults to None.
-
-            ### Custom log file path. BY default this is set internally to the same path as segmentation_file with the extension .log or to ./{self.__class__.__name__}.log if no segmentation_file is provided
-
-            log_file (str | Path | None, optional): _description_. Defaults to None.
+            log_file (str | Path | None, optional): _description_. Defaults to o the same path as segmentation_file with the extension .log or to ./{self.__class__.__name__}.log if no segmentation_file is provided.
 
         Returns:
             Dict[str, np.ndarray]: Post-processed data.
