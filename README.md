@@ -63,7 +63,7 @@ Contact us regarding licensing.
 
 ## Contact / Feedback / Questions
 
-If possible please open a GitHub issue [here](https://github.com/neuronflow/AURORA/issues).
+If possible please open a GitHub issue [here](https://github.com/BrainLesion/AURORA/issues).
 
 For inquiries not suitable for GitHub issues:
 
