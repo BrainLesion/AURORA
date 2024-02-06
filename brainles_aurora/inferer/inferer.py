@@ -1,5 +1,4 @@
 import logging
-from logging import Logger
 import os
 import json
 from abc import ABC, abstractmethod
@@ -93,7 +92,7 @@ class AbstractInferer(ABC):
         # Add the file handler to the !root! logger
         logging.getLogger().addHandler(self.log_file_handler)
 
-    def _setup_logger(self) -> Logger:
+    def _setup_logger(self):
         """Setup the logger for the inferer and overwrite system hooks to add logging for exceptions and signals."""
         config_file = Path(__file__).parent / "log_config.json"
         with open(config_file) as f_in:
@@ -364,15 +363,15 @@ class AuroraInferer(AbstractInferer):
             ]
 
             output = inferer(_img, self.model)
-            outputs = outputs + output
+            outputs += output
             n += 1.0
             for dims in [[2], [3]]:
                 flip_pred = inferer(torch.flip(_img, dims=dims), self.model)
 
                 output = torch.flip(flip_pred, dims=dims)
-                outputs = outputs + output
+                outputs += output
                 n += 1.0
-        outputs = outputs / n
+        outputs /= n
         return outputs
 
     def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
