@@ -1,15 +1,27 @@
+import json
 import logging
 import os
-import json
+import signal
+import sys
+import traceback
 from abc import ABC, abstractmethod
 from pathlib import Path
-import sys
 from typing import Dict, List
-import signal
+
 import monai
 import nibabel as nib
 import numpy as np
 import torch
+from auxiliary.turbopath import turbopath
+from brainles_aurora.inferer import (
+    IMGS_TO_MODE_DICT,
+    AuroraInfererConfig,
+    BaseConfig,
+    DataMode,
+    InferenceMode,
+    Output,
+)
+from brainles_aurora.utils import download_model_weights, remove_path_suffixes
 from monai.data import list_data_collate
 from monai.inferers import SlidingWindowInferer
 from monai.networks.nets import BasicUNet
@@ -23,22 +35,6 @@ from monai.transforms import (
     ToTensord,
 )
 from torch.utils.data import DataLoader
-import traceback
-
-from brainles_aurora.inferer import (
-    IMGS_TO_MODE_DICT,
-    DataMode,
-    InferenceMode,
-    Output,
-    AuroraInfererConfig,
-    BaseConfig,
-)
-from brainles_aurora.utils import (
-    download_model_weights,
-    remove_path_suffixes,
-)
-
-from auxiliary.turbopath import turbopath
 
 logger = logging.getLogger(__name__)
 
