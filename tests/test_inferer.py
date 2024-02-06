@@ -115,10 +115,7 @@ class TestAuroraInferer:
         with patch.object(mock_inferer, "_sliding_window_inference", return_value=None):
             mock_inferer.infer(t1=t1_path)
 
-    def test_configure_device_cpu(
-        self,
-        mock_config,
-    ):
+    def test_configure_device_cpu(self):
         inferer = AuroraInferer(config=AuroraInfererConfig(device=Device.CPU))
         device = inferer._configure_device()
         assert device == torch.device("cpu")

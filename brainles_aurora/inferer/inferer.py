@@ -42,10 +42,6 @@ logger = logging.getLogger(__name__)
 class AbstractInferer(ABC):
     """
     Abstract base class for inference.
-
-    Attributes:
-        config (BaseConfig): The configuration for the inferer.
-        output_folder (Path): The output folder for the inferer. Follows the schema {config.output_folder}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}
     """
 
     def __init__(self, config: BaseConfig) -> None:
@@ -129,7 +125,7 @@ class AbstractInferer(ABC):
 
 
 class AuroraInferer(AbstractInferer):
-    """Inferer for the CPU Aurora models."""
+    """Inferer for the Aurora models."""
 
     def __init__(self, config: AuroraInfererConfig) -> None:
         """Initialize the AuroraInferer.
@@ -138,7 +134,6 @@ class AuroraInferer(AbstractInferer):
             config (AuroraInfererConfig): Configuration for the Aurora inferer.
         """
         super().__init__(config=config)
-
         logger.info(f"Initialized {self.__class__.__name__} with config: {self.config}")
         self.device = self._configure_device()
 

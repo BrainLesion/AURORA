@@ -2,65 +2,56 @@ from enum import Enum
 
 
 class InferenceMode(str, Enum):
-    """Enum representing different modes of inference based on available image inputs
-
-    Enum Values:
-        T1_T1C_T2_FLA (str): All four modalities are available.
-        T1_T1C_FLA (str): T1, T1C, and FLAIR are available.
-        T1_T1C (str): T1 and T1C are available.
-        T1C_FLA (str): T1C and FLAIR are available.
-        T1C_O (str): T1C is available.
-        FLA_O (str): FLAIR is available.
-        T1_O (str): T1 is available.
+    """
+    Enum representing different modes of inference based on available image inputs.\n
+    In General You should aim to use as many modalities as possible to get the best results.
     """
 
     T1_T1C_T2_FLA = "t1-t1c-t2-fla"
+    """All four modalities are available."""
     T1_T1C_FLA = "t1-t1c-fla"
+    """T1, T1C, and FLAIR are available."""
     T1_T1C = "t1-t1c"
+    """T1 and T1C are available."""
     T1C_FLA = "t1c-fla"
+    """T1C and FLAIR are available."""
     T1C_O = "t1c-o"
+    """T1C is available."""
     FLA_O = "fla-o"
+    """FLAIR is available."""
     T1_O = "t1-o"
+    """T1 is available."""
 
 
 class ModelSelection(str, Enum):
-    """Enum representing different strategies for model selection.
-
-    Enum Values:
-        BEST (str): Select the best performing model.
-        LAST (str): Select the last model.
-        VANILLA (str): Select the vanilla model.
-    """
+    """Enum representing different strategies for model selection."""
 
     BEST = "best"
+    """Select the best performing model."""
     LAST = "last"
+    """Select the last model."""
     VANILLA = "vanilla"
+    """Select the vanilla model."""
 
 
 class DataMode(str, Enum):
-    """Enum representing different modes for handling input and output data.
-
-    Enum Values:
-        NIFTI_FILE (str): Input data is provided as NIFTI file paths/ output is writte to NIFTI files.
-        NUMPY (str): Input data is provided as NumPy arrays/ output is returned as NumPy arrays.
-    """
+    """Enum representing different modes for handling input and output data."""
 
     NIFTI_FILE = "NIFTI_FILEPATH"
+    """Input data is provided as NIFTI file paths/ output is writte to NIFTI files."""
     NUMPY = "NP_NDARRAY"
+    """Input data is provided as NumPy arrays/ output is returned as NumPy arrays."""
 
 
 class Output(str, Enum):
-    """Enum representing different types of output.
-
-    Enum Values:
-        SEGMENTATION (str): Segmentation mask.
-        WHOLE_NETWORK (str): Whole network output.
-        METASTASIS_NETWORK (str): Metastasis network output.
-    """
+    """Enum representing different types of output."""
 
     SEGMENTATION = "segmentation"
+    """Segmentation mask"""
     WHOLE_NETWORK = "whole_network"
+    """Whole network output."""
     METASTASIS_NETWORK = "metastasis_network"
+    """Metastasis network output."""
 
 
 MODALITIES = ["t1", "t1c", "t2", "fla"]
@@ -81,14 +72,11 @@ IMGS_TO_MODE_DICT = {
 
 
 class Device(str, Enum):
-    """Enum representing device for model inference.
-
-    Enum Values:
-        CPU (str): CPU.
-        GPU (str): GPU.
-        AUTO (str): Attempt to use GPU, fallback to CPU.
-    """
+    """Enum representing device for model inference."""
 
     CPU = "cpu"
+    """Use CPU"""
     GPU = "cuda"
+    """Use GPU (CUDA)"""
     AUTO = "auto"
+    """Attempt to use GPU, fallback to CPU."""

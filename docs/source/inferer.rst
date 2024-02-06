@@ -15,5 +15,5 @@ Inferer
 
 `Dataclasses`
 --------------------
-.. automodule:: brainles_aurora.inferer.dataclasses
+.. automodule:: brainles_aurora.inferer.config
     :members:
