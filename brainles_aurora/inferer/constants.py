@@ -78,3 +78,17 @@ IMGS_TO_MODE_DICT = {
     (True, False, False, False): InferenceMode.T1_O,
 }
 """Dictionary mapping tuples of booleans representing presence of the modality in order [t1,t1c,t2,fla] to InferenceMode values."""
+
+
+class Device(str, Enum):
+    """Enum representing device for model inference.
+
+    Enum Values:
+        CPU (str): CPU.
+        GPU (str): GPU.
+        AUTO (str): Attempt to use GPU, fallback to CPU.
+    """
+
+    CPU = "cpu"
+    GPU = "cuda"
+    AUTO = "auto"

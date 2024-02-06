@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Tuple
 
-from brainles_aurora.inferer import DataMode, ModelSelection
+from brainles_aurora.inferer import DataMode, ModelSelection, Device
 
 
 @dataclass
@@ -14,6 +14,7 @@ class BaseConfig:
     """
 
     log_level: int = logging.INFO
+    device: Device = Device.AUTO
     cuda_devices: str = "0"
 
 

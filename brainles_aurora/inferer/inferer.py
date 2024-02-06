@@ -12,7 +12,6 @@ import monai
 import nibabel as nib
 import numpy as np
 import torch
-from auxiliary.turbopath import turbopath
 from brainles_aurora.inferer import (
     IMGS_TO_MODE_DICT,
     AuroraInfererConfig,
@@ -20,6 +19,7 @@ from brainles_aurora.inferer import (
     DataMode,
     InferenceMode,
     Output,
+    Device,
 )
 from brainles_aurora.utils import download_model_weights, remove_path_suffixes
 from monai.data import list_data_collate
@@ -182,7 +182,7 @@ class AuroraInferer(AbstractInferer):
                     f"File {data} must be a nifti file with extension .nii or .nii.gz"
                 )
             self.input_mode = DataMode.NIFTI_FILE
-            return Path(turbopath(data))
+            return Path(data).absolute()
 
         images = [
             _validate_image(img)
@@ -487,20 +487,26 @@ class AuroraInferer(AbstractInferer):
                 return postprocessed_data
 
     def _configure_device(self) -> torch.device:
-        """Configure the device for inference. Will attempt to use cuda if available (devices specified in the config), otherwise use cpu.
+        """Configure the device for inference based on the specified config.device.
 
         Returns:
             torch.device: Configured device.
         """
-
-        if torch.cuda.is_available():
-            os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-            os.environ["CUDA_VISIBLE_DEVICES"] = self.config.cuda_devices
-            # clean memory
-            torch.cuda.empty_cache()
-            device = torch.device("cuda")
-        else:
+        if self.config.device == Device.CPU:
             device = torch.device("cpu")
+        if self.config.device == Device.AUTO or self.config.device == Device.GPU:
+            if torch.cuda.is_available():
+                os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+                os.environ["CUDA_VISIBLE_DEVICES"] = self.config.cuda_devices
+                # clean memory
+                torch.cuda.empty_cache()
+                device = torch.device("cuda")
+            else:
+                if self.config.device == Device.GPU:
+                    logger.warning(
+                        "Requested GPU device, but no CUDA devices available. Falling back to CPU."
+                    )
+                device = torch.device("cpu")
 
         logger.info(f"Set torch device: {device}")
 

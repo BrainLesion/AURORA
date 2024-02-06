@@ -9,6 +9,7 @@ from brainles_aurora.inferer import (
     InferenceMode,
     AuroraInfererConfig,
     AuroraInferer,
+    Device,
 )
 
 
@@ -58,6 +59,7 @@ class TestAuroraInferer:
             t2=t2_path,
             fla=fla_path,
         )
+        print(images)
         assert len(images) == 4
         assert all(isinstance(img, Path) for img in images)
 
@@ -113,11 +115,11 @@ class TestAuroraInferer:
         with patch.object(mock_inferer, "_sliding_window_inference", return_value=None):
             mock_inferer.infer(t1=t1_path)
 
-    def test_configure_device(
+    def test_configure_device_cpu(
         self,
         mock_config,
     ):
-        inferer = AuroraInferer(config=mock_config)
+        inferer = AuroraInferer(config=AuroraInfererConfig(device=Device.CPU))
         device = inferer._configure_device()
         assert device == torch.device("cpu")
 
