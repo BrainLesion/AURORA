@@ -14,6 +14,7 @@ class BaseConfig:
     """
 
     log_level: int = logging.INFO
+    cuda_devices: str = "0"
 
 
 @dataclass

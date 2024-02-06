@@ -144,6 +144,7 @@ class AuroraInferer(AbstractInferer):
 
         self.validated_images = None
         self.inference_mode = None
+        self.input_mode = None
 
     def _validate_images(
         self,
@@ -486,13 +487,23 @@ class AuroraInferer(AbstractInferer):
                 return postprocessed_data
 
     def _configure_device(self) -> torch.device:
-        """Configure the device for inference.
+        """Configure the device for inference. Will attempt to use cuda if available (devices specified in the config), otherwise use cpu.
 
         Returns:
             torch.device: Configured device.
         """
-        device = torch.device("cpu")
-        logger.info(f"Using device: {device}")
+
+        if torch.cuda.is_available():
+            os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+            os.environ["CUDA_VISIBLE_DEVICES"] = self.config.cuda_devices
+            # clean memory
+            torch.cuda.empty_cache()
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")
+
+        logger.info(f"Set torch device: {device}")
+
         return device
 
     def infer(
@@ -564,45 +575,3 @@ class AuroraInferer(AbstractInferer):
         out = self._sliding_window_inference()
         logger.info(f"Finished inference {os.linesep}")
         return out
-
-
-####################
-# GPU Inferer
-####################
-class AuroraGPUInferer(AuroraInferer):
-    """Inferer for the Aurora models on GPU."""
-
-    def __init__(
-        self,
-        config: AuroraInfererConfig,
-        cuda_devices: str = "0",
-    ) -> None:
-        """Initialize the AuroraGPUInferer.
-
-        Args:
-            config (AuroraInfererConfig): Configuration for the Aurora GPU inferer.
-            cuda_devices (str, optional): CUDA devices to use. Defaults to "0".
-        """
-        self.cuda_devices = cuda_devices
-
-        super().__init__(config=config)
-
-    def _configure_device(self) -> torch.device:
-        """Configure the GPU device for inference.
-
-        Returns:
-            torch.device: Configured GPU device.
-        """
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = self.cuda_devices
-
-        assert (
-            torch.cuda.is_available()
-        ), "No cuda device available while using GPUInferer"
-
-        device = torch.device("cuda")
-        logger.info(f"Set torch device: {device}")
-
-        # clean memory
-        torch.cuda.empty_cache()
-        return device

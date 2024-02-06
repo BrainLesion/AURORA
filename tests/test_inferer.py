@@ -9,7 +9,6 @@ from brainles_aurora.inferer import (
     InferenceMode,
     AuroraInfererConfig,
     AuroraInferer,
-    AuroraGPUInferer,
 )
 
 
@@ -130,6 +129,6 @@ class TestAuroraInferer:
         self,
         mock_config,
     ):
-        inferer = AuroraGPUInferer(config=mock_config)
+        inferer = AuroraInferer(config=mock_config)
         device = inferer._configure_device()
         assert device == torch.device("cuda")
