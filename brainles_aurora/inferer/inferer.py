@@ -127,7 +127,8 @@ class AuroraInferer(AbstractInferer):
         self.device = self._configure_device()
 
         self.inference_mode = None
-        self.input_mode = None
+        self.data_handler = DataHandler(config=self.config)
+        # self.model_handler = ModelHandler(config=self.config)
 
     def _get_model(self) -> torch.nn.Module:
         """Get the Aurora model based on the inference mode.
@@ -208,16 +209,6 @@ class AuroraInferer(AbstractInferer):
         outputs /= n
         return outputs
 
-    def _get_not_none_files(self) -> List[np.ndarray] | List[Path]:
-        """Get the list of non-None input images in  order T1-T1C-T2-FLA.
-
-        Returns:
-            List[np.ndarray] | List[Path]: List of non-None images.
-        """
-        assert self.validated_images is not None, "Images not validated yet"
-
-        return [img for img in self.validated_images if img is not None]
-
     def _save_as_nifti(self, postproc_data: Dict[str, np.ndarray]) -> None:
         """Save post-processed data as NIFTI files.
 
@@ -225,8 +216,8 @@ class AuroraInferer(AbstractInferer):
             postproc_data (Dict[str, np.ndarray]): Post-processed data.
         """
         # determine affine/ header
-        if self.input_mode == DataMode.NIFTI_FILE:
-            reference_file = self._get_not_none_files()[0]
+        if self.data_handler.get_input_mode() == DataMode.NIFTI_FILE:
+            reference_file = self.data_handler.get_reference_nifti_file()
             ref = nib.load(reference_file)
             affine, header = ref.affine, ref.header
         else:
@@ -395,17 +386,20 @@ class AuroraInferer(AbstractInferer):
         logger.info(f"Infer with config: {self.config} and device: {self.device}")
 
         # check inputs and get mode , if mode == prev mode => run inference, else load new model
-        data_handler = DataHandler(config=self.config)
-        validated_images = data_handler.validate_images(t1=t1, t1c=t1c, t2=t2, fla=fla)
-        determined_inference_mode = data_handler.determine_inference_mode(
+        validated_images = self.data_handler.validate_images(
+            t1=t1, t1c=t1c, t2=t2, fla=fla
+        )
+        determined_inference_mode = self.data_handler.determine_inference_mode(
             images=validated_images
         )
 
         logger.info("Setting up Dataloader")
-        data_loader = data_handler.get_data_loader(images=validated_images)
+        data_loader = self.data_handler.get_data_loader(images=validated_images)
 
-        if determined_inference_mode != self.inference_mode:
-            logger.info("No loaded compatible model found. Loading Model and weights")
+        if self.inference_mode != determined_inference_mode:
+            logger.info(
+                f"No loaded compatible model found (Switching from {self.inference_mode} to {determined_inference_mode}). Loading Model and weights"
+            )
             self.inference_mode = determined_inference_mode
             self.model = self._get_model()
         else:

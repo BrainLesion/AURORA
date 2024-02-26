@@ -27,9 +27,43 @@ class DataHandler:
 
     def __init__(self, config: AuroraInfererConfig) -> "DataHandler":
         self.config = config
-        self.input_mode = (
-            None  # Will be inferred from the input images during validation
-        )
+        # Following will be inferred from the input images during validation
+        self.input_mode = None
+        self.num_input_modalities = None
+        self.reference_nifti_file = None
+
+    def get_input_mode(self) -> DataMode:
+        """Get the input mode.
+
+        Returns:
+            DataMode: Input mode.
+        """
+        assert (
+            self.input_mode is not None
+        ), "Input mode not set. Please validate the input images first by calling .validate_images(...)."
+        return self.input_mode
+
+    def get_num_input_modalities(self) -> int:
+        """Get the number of input modalities.
+
+        Returns:
+            int: Number of input modalities.
+        """
+        assert (
+            self.num_input_modalities is not None
+        ), "Number of input modalities not set. Please validate the input images first by calling .validate_images(...)."
+        return self.num_input_modalities
+
+    def get_reference_nifti_file(self) -> Path | str:
+        """Get a reference Nifti file from the input (first not None in order T1-T1C-T2-FLAIR) to match header and affine.
+
+        Returns:
+            Path: Path to reference Nifti file.
+        """
+        assert (
+            self.reference_nifti_file is not None
+        ), "Reference Nifti file not set. Please ensure you provided paths to NIfTI images and validated the input images first by calling .validate_images(...)."
+        return self.reference_nifti_file
 
     def validate_images(
         self,
@@ -58,7 +92,6 @@ class DataHandler:
             if data is None:
                 return None
             if isinstance(data, np.ndarray):
-                self.input_mode = DataMode.NUMPY
                 return data.astype(np.float32)
             if not os.path.exists(data):
                 raise FileNotFoundError(f"File {data} not found")
@@ -87,10 +120,25 @@ class DataHandler:
             len(unique_types) == 1
         ), f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
 
+        self.num_input_modalities = len(not_none_images)
+        if self.input_mode is DataMode.NIFTI_FILE:
+            self.reference_nifti_file = not_none_images[0]
+
         logger.info(
-            f"Successfully validated input images. Input mode: {self.input_mode}"
+            f"Successfully validated input images (received {self.num_input_modalities}). Input mode: {self.input_mode}"
         )
         return images
+
+    # def _get_not_none_files(
+    #     self, validated_images: List[np.ndarray] | List[Path]
+    # ) -> List[np.ndarray] | List[Path]:
+    #     """Get the list of not-None input images in  order T1-T1C-T2-FLA.
+    #     Args:
+    #         validated_images (List[np.ndarray] | List[Path]): List of validated images.
+    #     Returns:
+    #         List[np.ndarray] | List[Path]: List of non-None images.
+    #     """
+    #     return [img for img in validated_images if img is not None]
 
     def determine_inference_mode(
         self, images: List[np.ndarray | None] | List[Path | None]
