@@ -82,7 +82,7 @@ class DataHandler:
         fla: str | Path | np.ndarray | None = None,
     ) -> List[np.ndarray | None] | List[Path | None]:
         """Validate the input images. \n
-        Verify that the input images exist (for paths) and are all of the same type (NumPy or Nifti).
+        Verify that the input images exist (for paths) and are all of the same type (NumPy or NIfTI).
         Sets internal variables input_mode, num_input_modalities and reference_nifti_file.
 
         Args:
@@ -105,6 +105,7 @@ class DataHandler:
             if data is None:
                 return None
             if isinstance(data, np.ndarray):
+                self.input_mode = DataMode.NUMPY
                 return data.astype(np.float32)
             if not os.path.exists(data):
                 raise FileNotFoundError(f"File {data} not found")
@@ -252,7 +253,6 @@ class DataHandler:
                 f"Writing NIFTI output after NumPy input, using default affine=np.eye(4) and header=None"
             )
             affine, header = np.eye(4), None
-
         # save NIfTI files
         for key, data in postproc_data.items():
             output_file = output_file_mapping[key]

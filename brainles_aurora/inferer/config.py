@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Tuple
 
-from brainles_aurora.inferer import DataMode, ModelSelection, Device
+from brainles_aurora.inferer.constants import Device, ModelSelection
 
 
 @dataclass

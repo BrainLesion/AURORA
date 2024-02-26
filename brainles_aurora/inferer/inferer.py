@@ -12,12 +12,8 @@ from typing import Dict, Optional
 
 import numpy as np
 import torch
-from brainles_aurora.inferer import (
-    AuroraInfererConfig,
-    BaseConfig,
-    Device,
-    Output,
-)
+from brainles_aurora.inferer.config import AuroraInfererConfig, BaseConfig
+from brainles_aurora.inferer.constants import Device, Output
 from brainles_aurora.inferer.data import DataHandler
 from brainles_aurora.inferer.model import ModelHandler
 from brainles_aurora.utils import remove_path_suffixes
@@ -106,7 +102,7 @@ class AbstractInferer(ABC):
 class AuroraInferer(AbstractInferer):
     """Inferer for the Aurora models."""
 
-    def __init__(self, config: Optional[AuroraInfererConfig]) -> None:
+    def __init__(self, config: Optional[AuroraInfererConfig] = None) -> None:
         """Initialize the AuroraInferer.
 
         Args:
@@ -221,7 +217,7 @@ class AuroraInferer(AbstractInferer):
 
         # save data to fie if paths are provided
         if any(output_file_mapping.values()):
-            logger.info("Saving post-processed data as NIFTI files")
+            logger.info("Saving post-processed data as NIfTI files")
             self.data_handler.save_as_nifti(
                 postproc_data=out, output_file_mapping=output_file_mapping
             )
