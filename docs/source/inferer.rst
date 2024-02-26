@@ -12,8 +12,16 @@ Inferer
 .. automodule:: brainles_aurora.inferer.constants
     :members:
 
+`Data`
+--------------------
+.. automodule:: brainles_aurora.inferer.data
+    :members:
+`Model`
+--------------------
+.. automodule:: brainles_aurora.inferer.model
+    :members:
 
-`Dataclasses`
+`Configs`
 --------------------
 .. automodule:: brainles_aurora.inferer.config
     :members:
