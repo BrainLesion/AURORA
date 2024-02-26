@@ -1,13 +1,13 @@
 from brainles_aurora.inferer import (
     AuroraInferer,
-    AuroraGPUInferer,
     AuroraInfererConfig,
 )
 import os
+import logging
 from path import Path
 import nibabel as nib
 
-BASE_PATH = Path(os.path.abspath(__file__)).parent
+BASE_PATH = Path(os.path.abspath(__file__)).parent.parent
 
 t1 = BASE_PATH / "example/data/BraTS-MET-00110-000-t1n.nii.gz"
 t1c = BASE_PATH / "example/data/BraTS-MET-00110-000-t1c.nii.gz"
@@ -21,11 +21,11 @@ def load_np_from_nifti(path):
 
 def gpu_nifti():
     config = AuroraInfererConfig(
-        tta=False
+        tta=False, cuda_devices="4"
     )  # disable tta for faster inference in this showcase
 
     # If you don-t have a GPU that supports CUDA use the CPU version: AuroraInferer(config=config)
-    inferer = AuroraGPUInferer(config=config)
+    inferer = AuroraInferer(config=config)
 
     inferer.infer(
         t1=t1,
@@ -100,4 +100,5 @@ def gpu_output_np():
 
 
 if __name__ == "__main__":
-    gpu_nifti_2()
+    logging.basicConfig(level=logging.DEBUG)
+    gpu_nifti()

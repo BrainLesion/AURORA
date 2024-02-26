@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 from pathlib import Path
@@ -246,7 +248,7 @@ class DataHandler:
         )
         return data_loader
 
-    def _save_as_nifti(
+    def save_as_nifti(
         self, postproc_data: Dict[str, np.ndarray], output_file_mapping: Dict[str, str]
     ) -> None:
         """Save post-processed data as NIFTI files.

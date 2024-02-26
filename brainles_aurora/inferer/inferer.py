@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -6,7 +8,7 @@ import sys
 import traceback
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
@@ -106,12 +108,14 @@ class AbstractInferer(ABC):
 class AuroraInferer(AbstractInferer):
     """Inferer for the Aurora models."""
 
-    def __init__(self, config: AuroraInfererConfig) -> None:
+    def __init__(self, config: Optional[AuroraInfererConfig]) -> None:
         """Initialize the AuroraInferer.
 
         Args:
-            config (AuroraInfererConfig): Configuration for the Aurora inferer.
+            config (Optional[AuroraInfererConfig]): Configuration for the inferer. If none provided, default config is used.
         """
+        if not config:
+            config = AuroraInfererConfig()
         super().__init__(config=config)
         logger.info(f"Initialized {self.__class__.__name__} with config: {self.config}")
         self.device = self._configure_device()
@@ -127,12 +131,18 @@ class AuroraInferer(AbstractInferer):
         if self.config.device == Device.CPU:
             device = torch.device("cpu")
         if self.config.device == Device.AUTO or self.config.device == Device.GPU:
+            # The env vars have to be set ebfore the first call to torch.cuda, else torch will always attempt to use the first device
+            os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+            os.environ["CUDA_VISIBLE_DEVICES"] = self.config.cuda_devices
             if torch.cuda.is_available():
-                os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-                os.environ["CUDA_VISIBLE_DEVICES"] = self.config.cuda_devices
                 # clean memory
                 torch.cuda.empty_cache()
                 device = torch.device("cuda")
+                logger.info(
+                    f"Set CUDA_VISIBLE_DEVICES to {os.environ['CUDA_VISIBLE_DEVICES']}"
+                )
+                logger.debug(f"Available CUDA devices: {torch.cuda.device_count()}")
+                logger.debug(f"Current CUDA devices: {torch.cuda.current_device()}")
             else:
                 if self.config.device == Device.GPU:
                     logger.warning(
@@ -201,13 +211,20 @@ class AuroraInferer(AbstractInferer):
         data_loader = self.data_handler.get_data_loader(images=validated_images)
 
         # setup output file paths
-        self.output_file_mapping = {
+        output_file_mapping = {
             Output.SEGMENTATION: segmentation_file,
             Output.WHOLE_NETWORK: whole_tumor_unbinarized_floats_file,
             Output.METASTASIS_NETWORK: metastasis_unbinarized_floats_file,
         }
 
         logger.info(f"Running inference on device := {self.device}")
-        out = self.model_handler
-        logger.info(f"Finished inference {os.linesep}")
+        out = self.model_handler.infer(data_loader=data_loader)
+        logger.info(f"Finished inference")
+
+        # save data to fie if paths are provided
+        if any(output_file_mapping.values()):
+            logger.info("Saving post-processed data as NIFTI files")
+            self.data_handler.save_as_nifti(
+                postproc_data=out, output_file_mapping=output_file_mapping
+            )
         return out

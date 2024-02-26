@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 from pathlib import Path
@@ -44,10 +46,11 @@ class ModelHandler:
 
         if not self.model or self.inference_mode != inference_mode:
             logger.info(
-                f"No loaded compatible model found (Switching from {self.inference_mode} to {inference_mode}). Loading Model and weights"
+                f"No loaded compatible model found (Switching from {self.inference_mode} to {inference_mode}). Loading Model and weights..."
             )
             self.inference_mode = inference_mode
             self.model = self._load_model(num_input_modalities=num_input_modalities)
+            logger.info(f"Successfully loaded model.")
         else:
             logger.info(
                 f"Same inference mode ({self.inference_mode}) as previous infer call. Re-using loaded model"
@@ -208,14 +211,9 @@ class ModelHandler:
                     onehot_model_outputs_CHWD=outputs,
                 )
 
-                # save data to fie if paths are provided
-                if any(self.output_file_mapping.values()):
-                    logger.info("Saving post-processed data as NIFTI files")
-                    self._save_as_nifti(postproc_data=postprocessed_data)
-
                 logger.info("Returning post-processed data as Dict of Numpy arrays")
                 return postprocessed_data
 
-    def infer(self):
+    def infer(self, data_loader: DataLoader) -> Dict[str, np.ndarray]:
         """TODO"""
-        self.model = self._get_model()
+        return self._sliding_window_inference(data_loader=data_loader)
