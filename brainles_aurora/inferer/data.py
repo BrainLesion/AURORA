@@ -1,10 +1,13 @@
 import logging
 import os
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 import monai
+import nibabel as nib
 import numpy as np
+from brainles_aurora.inferer.config import AuroraInfererConfig
+from brainles_aurora.inferer.constants import IMGS_TO_MODE_DICT, DataMode, InferenceMode
 from monai.data import list_data_collate
 from monai.transforms import (
     Compose,
@@ -15,9 +18,6 @@ from monai.transforms import (
     ToTensord,
 )
 from torch.utils.data import DataLoader
-
-from brainles_aurora.inferer.config import AuroraInfererConfig
-from brainles_aurora.inferer.constants import IMGS_TO_MODE_DICT, DataMode, InferenceMode
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,8 @@ class DataHandler:
 
         Returns:
             DataMode: Input mode.
+        Raises:
+            AssertionError: If the input mode is not set (i.e. input images were not validated)
         """
         assert (
             self.input_mode is not None
@@ -48,6 +50,9 @@ class DataHandler:
 
         Returns:
             int: Number of input modalities.
+        Raises:
+
+            AssertionError: If the number of input modalities is not set (i.e. input images were not validated)
         """
         assert (
             self.num_input_modalities is not None
@@ -59,6 +64,8 @@ class DataHandler:
 
         Returns:
             Path: Path to reference Nifti file.
+        Raises:
+            AssertionError: If the reference NIfTI file is not set (i.e. input images were not validated)
         """
         assert (
             self.reference_nifti_file is not None
@@ -74,7 +81,7 @@ class DataHandler:
     ) -> List[np.ndarray | None] | List[Path | None]:
         """Validate the input images. \n
         Verify that the input images exist (for paths) and are all of the same type (NumPy or Nifti).
-        If the input is a numpy array, the input mode is set to DataMode.NUMPY, otherwise to DataMode.NIFTI_FILE.
+        Sets internal variables input_mode, num_input_modalities and reference_nifti_file.
 
         Args:
             t1 (str | Path | np.ndarray | None, optional): T1 modality. Defaults to None.
@@ -84,6 +91,10 @@ class DataHandler:
 
         Returns:
             List[np.ndarray | None] | List[Path | None]: List of validated images.
+        Raises:
+            FileNotFoundError: If a file is not found.
+        Raises:
+            ValueError: If a file path is not a NIfTI file (.nii or .nii.gz).
         """
 
         def _validate_image(
@@ -129,17 +140,6 @@ class DataHandler:
         )
         return images
 
-    # def _get_not_none_files(
-    #     self, validated_images: List[np.ndarray] | List[Path]
-    # ) -> List[np.ndarray] | List[Path]:
-    #     """Get the list of not-None input images in  order T1-T1C-T2-FLA.
-    #     Args:
-    #         validated_images (List[np.ndarray] | List[Path]): List of validated images.
-    #     Returns:
-    #         List[np.ndarray] | List[Path]: List of non-None images.
-    #     """
-    #     return [img for img in validated_images if img is not None]
-
     def determine_inference_mode(
         self, images: List[np.ndarray | None] | List[Path | None]
     ) -> InferenceMode:
@@ -148,10 +148,12 @@ class DataHandler:
         Args:
             images (List[np.ndarray | None] | List[Path | None]): List of validated images.
 
-        Raises:
-            NotImplementedError: If no model is implemented for the combination of input images.
         Returns:
             InferenceMode: Inference mode based on the combination of input images.
+        Raises:
+            NotImplementedError: If no model is implemented for the combination of input images.
+        Raises:
+            AssertionError: If the input mode is not set (i.e. input images were not validated)
         """
 
         assert (
@@ -184,6 +186,8 @@ class DataHandler:
 
         Returns:
             torch.utils.data.DataLoader: Data loader for inference.
+        Raises:
+            AssertionError: If the input mode is not set (i.e. input images were not validated)
         """
 
         assert (
@@ -241,3 +245,32 @@ class DataHandler:
             shuffle=False,
         )
         return data_loader
+
+    def _save_as_nifti(
+        self, postproc_data: Dict[str, np.ndarray], output_file_mapping: Dict[str, str]
+    ) -> None:
+        """Save post-processed data as NIFTI files.
+
+        Args:
+            postproc_data (Dict[str, np.ndarray]): Post-processed data.
+            output_file_mapping (Dict[str,str]): Mapping of output keys to output file paths.
+        """
+        # determine affine/ header
+        if self.get_input_mode() == DataMode.NIFTI_FILE:
+            reference_file = self.get_reference_nifti_file()
+            ref = nib.load(reference_file)
+            affine, header = ref.affine, ref.header
+        else:
+            logger.warning(
+                f"Writing NIFTI output after NumPy input, using default affine=np.eye(4) and header=None"
+            )
+            affine, header = np.eye(4), None
+
+        # save niftis
+        for key, data in postproc_data.items():
+            output_file = output_file_mapping[key]
+            if output_file:
+                output_image = nib.Nifti1Image(data, affine, header)
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
+                nib.save(output_image, output_file)
+                logger.info(f"Saved {key} to {output_file}")
