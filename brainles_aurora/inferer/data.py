@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class DataHandler:
-    """DataHandler class for handling input images and creating the data loader for inference."""
+    """Class to perform data related tasks such as validation, loading, transformation, saving."""
 
     def __init__(self, config: AuroraInfererConfig) -> "DataHandler":
         self.config = config
@@ -62,16 +62,16 @@ class DataHandler:
         return self.num_input_modalities
 
     def get_reference_nifti_file(self) -> Path | str:
-        """Get a reference Nifti file from the input (first not None in order T1-T1C-T2-FLAIR) to match header and affine.
+        """Get a reference NIfTI file from the input (first not None in order T1-T1C-T2-FLAIR) to match header and affine.
 
         Returns:
-            Path: Path to reference Nifti file.
+            Path: Path to reference NIfTI file.
         Raises:
             AssertionError: If the reference NIfTI file is not set (i.e. input images were not validated)
         """
         assert (
             self.reference_nifti_file is not None
-        ), "Reference Nifti file not set. Please ensure you provided paths to NIfTI images and validated the input images first by calling .validate_images(...)."
+        ), "Reference NIfTI file not set. Please ensure you provided paths to NIfTI images and validated the input images first by calling .validate_images(...)."
         return self.reference_nifti_file
 
     def validate_images(
@@ -124,7 +124,6 @@ class DataHandler:
                 fla,
             ]
         ]
-
         not_none_images = [img for img in images if img is not None]
         assert len(not_none_images) > 0, "No input images provided"
         # make sure all inputs have the same type
@@ -132,11 +131,9 @@ class DataHandler:
         assert (
             len(unique_types) == 1
         ), f"All passed images must be of the same type! Received {unique_types}. Accepted Input types: {list(DataMode)}"
-
         self.num_input_modalities = len(not_none_images)
         if self.input_mode is DataMode.NIFTI_FILE:
             self.reference_nifti_file = not_none_images[0]
-
         logger.info(
             f"Successfully validated input images (received {self.num_input_modalities}). Input mode: {self.input_mode}"
         )
@@ -146,10 +143,8 @@ class DataHandler:
         self, images: List[np.ndarray | None] | List[Path | None]
     ) -> InferenceMode:
         """Determine the inference mode based on the provided images.
-
         Args:
             images (List[np.ndarray | None] | List[Path | None]): List of validated images.
-
         Returns:
             InferenceMode: Inference mode based on the combination of input images.
         Raises:
@@ -157,24 +152,19 @@ class DataHandler:
         Raises:
             AssertionError: If the input mode is not set (i.e. input images were not validated)
         """
-
         assert (
             self.input_mode is not None
         ), "Please validate the input images first by calling validate_images(...)."
-
         _t1, _t1c, _t2, _flair = [img is not None for img in images]
         logger.info(
             f"Received files: T1: {_t1}, T1C: {_t1c}, T2: {_t2}, FLAIR: {_flair}"
         )
-
         # check if files are given in a valid combination that has an existing model implementation
         mode = IMGS_TO_MODE_DICT.get((_t1, _t1c, _t2, _flair), None)
-
         if mode is None:
             raise NotImplementedError(
-                f"No model implemented for this combination of images: T1: {_t1}, T1C: {_t1c}, T2: {_t2}, FLAIR: {_flair}"
+                f"No model implemented for this combination of images: T1: {_t1}, T1C: {_t1c}, T2: {_t2}, FLAIR: {_flair}. {os.linesep}Available models: {[mode.value for mode in InferenceMode]}"
             )
-
         logger.info(f"Inference mode: {mode}")
         return mode
 
@@ -191,11 +181,9 @@ class DataHandler:
         Raises:
             AssertionError: If the input mode is not set (i.e. input images were not validated)
         """
-
         assert (
             self.input_mode is not None
         ), "Input mode not set. Please validate the input images first by calling .validate_images(...)."
-
         filtered_images = [img for img in images if img is not None]
         # init transforms
         transforms = [
@@ -227,18 +215,15 @@ class DataHandler:
         # Filter None transforms
         transforms = list(filter(None, transforms))
         inference_transforms = Compose(transforms)
-
         # Initialize data dictionary
         data = {
             "images": filtered_images,
         }
-
         # init dataset and dataloader
         inference_ds = monai.data.Dataset(
             data=[data],
             transform=inference_transforms,
         )
-
         data_loader = DataLoader(
             inference_ds,
             batch_size=1,
@@ -268,7 +253,7 @@ class DataHandler:
             )
             affine, header = np.eye(4), None
 
-        # save niftis
+        # save NIfTI files
         for key, data in postproc_data.items():
             output_file = output_file_mapping[key]
             if output_file:

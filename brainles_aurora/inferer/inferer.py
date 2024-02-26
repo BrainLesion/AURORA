@@ -8,21 +8,19 @@ import sys
 import traceback
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import numpy as np
 import torch
 from brainles_aurora.inferer import (
-    IMGS_TO_MODE_DICT,
     AuroraInfererConfig,
     BaseConfig,
-    DataMode,
     Device,
     Output,
 )
 from brainles_aurora.inferer.data import DataHandler
 from brainles_aurora.inferer.model import ModelHandler
-from brainles_aurora.utils import download_model_weights, remove_path_suffixes
+from brainles_aurora.utils import remove_path_suffixes
 
 logger = logging.getLogger(__name__)
 

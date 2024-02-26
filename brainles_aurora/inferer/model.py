@@ -27,14 +27,11 @@ class ModelHandler:
     ) -> "ModelHandler":
         self.config = config
         self.device = device
-
         # Will be set during infer() call
         self.model = None
         self.inference_mode = None
-
         # download weights if not present
         self.lib_path: str = Path(os.path.dirname(os.path.abspath(__file__)))
-
         self.model_weights_folder = self.lib_path.parent / "model_weights"
         if not self.model_weights_folder.exists():
             download_model_weights(target_folder=str(self.lib_path.parent))
@@ -43,7 +40,6 @@ class ModelHandler:
         self, inference_mode: InferenceMode, num_input_modalities: int
     ) -> None:
         """TODO"""
-
         if not self.model or self.inference_mode != inference_mode:
             logger.info(
                 f"No loaded compatible model found (Switching from {self.inference_mode} to {inference_mode}). Loading Model and weights..."
@@ -62,7 +58,6 @@ class ModelHandler:
         Returns:
             torch.nn.Module: Aurora model.
         """
-
         # init model
         model = BasicUNet(
             spatial_dims=3,
@@ -72,22 +67,18 @@ class ModelHandler:
             dropout=0.1,
             act="mish",
         )
-
         # load weights
         weights_path = os.path.join(
             self.model_weights_folder,
             self.inference_mode,
             f"{self.config.model_selection}.tar",
         )
-
         if not os.path.exists(weights_path):
             raise NotImplementedError(
-                f"No weights found for model {self.inference_mode} and selection {self.config.model_selection}"
+                f"No weights found for model {self.inference_mode} and selection {self.config.model_selection}. {os.linesep}Available models: {[mode.value for mode in InferenceMode]}"
             )
-
         model = model.to(self.device)
         checkpoint = torch.load(weights_path, map_location=self.device)
-
         # The models were trained using DataParallel, hence we need to remove the 'module.' prefix
         # for cpu inference to enable checkpoint loading (since DataParallel is not usable for CPU)
         if self.device == torch.device("cpu"):
@@ -98,9 +89,7 @@ class ModelHandler:
                 }
         else:
             model = torch.nn.parallel.DataParallel(model)
-
         model.load_state_dict(checkpoint["model_state"])
-
         return model
 
     def _apply_test_time_augmentations(
@@ -122,13 +111,11 @@ class ModelHandler:
             _img = RandGaussianNoised(keys="images", prob=1.0, std=0.001)(data)[
                 "images"
             ]
-
             output = inferer(_img, self.model)
             outputs += output
             n += 1.0
             for dims in [[2], [3]]:
                 flip_pred = inferer(torch.flip(_img, dims=dims), self.model)
-
                 output = torch.flip(flip_pred, dims=dims)
                 outputs += output
                 n += 1.0
@@ -146,24 +133,21 @@ class ModelHandler:
         Returns:
             Dict[str, np.ndarray]: Post-processed data.
         """
-
         # create segmentations
         activated_outputs = (
             (onehot_model_outputs_CHWD[0][:, :, :, :].sigmoid()).detach().cpu().numpy()
         )
         binarized_outputs = activated_outputs >= self.config.threshold
         binarized_outputs = binarized_outputs.astype(np.uint8)
-
+        # output channles
         whole_metastasis = binarized_outputs[0]
         enhancing_metastasis = binarized_outputs[1]
-
+        # final seg
         final_seg = whole_metastasis.copy()
         final_seg[whole_metastasis == 1] = 1  # edema
         final_seg[enhancing_metastasis == 1] = 2  # enhancing
-
         whole_out = binarized_outputs[0]
         enhancing_out = binarized_outputs[1]
-
         # create output dict based on config
         return {
             Output.SEGMENTATION: final_seg,
@@ -198,19 +182,16 @@ class ModelHandler:
             # currently always only 1 batch! TODO: potentialy add support to pass multiple image tuples at once?
             for data in data_loader:
                 inputs = data["images"].to(self.device)
-
                 outputs = inferer(inputs, self.model)
                 if self.config.tta:
                     logger.info("Applying test time augmentations")
                     outputs = self._apply_test_time_augmentations(
                         outputs, data, inferer
                     )
-
                 logger.info("Post-processing data")
                 postprocessed_data = self._post_process(
                     onehot_model_outputs_CHWD=outputs,
                 )
-
                 logger.info("Returning post-processed data as Dict of Numpy arrays")
                 return postprocessed_data
 
