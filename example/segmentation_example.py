@@ -41,11 +41,11 @@ def gpu_nifti():
 
 def gpu_nifti_2():
     config = AuroraInfererConfig(
-        tta=False
+        tta=False, cuda_devices="4"
     )  # disable tta for faster inference in this showcase
 
     # If you don-t have a GPU that supports CUDA use the CPU version: AuroraInferer(config=config)
-    inferer = AuroraGPUInferer(config=config)
+    inferer = AuroraInferer(config=config)
 
     inferer.infer(
         t1=t1,
@@ -57,19 +57,6 @@ def gpu_nifti_2():
         t1=t1,
         segmentation_file="test_output2/randomseg.nii.gz",
     )
-
-
-def cpu_nifti():
-    config = AuroraInfererConfig(
-        t1=t1,
-        t1c=t1c,
-        t2=t2,
-        fla=fla,
-    )
-    inferer = AuroraInferer(
-        config=config,
-    )
-    inferer.infer()
 
 
 def gpu_np():
@@ -86,20 +73,8 @@ def gpu_np():
     )
 
 
-def gpu_output_np():
-    config = AuroraInfererConfig(
-        t1=load_np_from_nifti(t1),
-        t1c=load_np_from_nifti(t1c),
-        t2=load_np_from_nifti(t2),
-        fla=load_np_from_nifti(fla),
-    )
-    inferer = AuroraGPUInferer(
-        config=config,
-    )
-    data = inferer.infer()
-
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     # gpu_nifti()
-    gpu_np()
+    # gpu_np()
+    gpu_nifti_2()
