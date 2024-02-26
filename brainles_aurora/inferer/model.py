@@ -143,7 +143,7 @@ class ModelHandler:
         """Post-process the model outputs.
 
         Args:
-            onehot_model_outputs_CHWD (torch.Tensor): One-hot encoded model outputs.
+            onehot_model_outputs_CHWD (torch.Tensor): One-hot encoded model outputs (Channel Height Width Depth).
 
         Returns:
             Dict[str, np.ndarray]: Post-processed data.
