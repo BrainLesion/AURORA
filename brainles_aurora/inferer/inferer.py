@@ -51,7 +51,7 @@ class AbstractInferer(ABC):
         self.log_file_handler = logging.FileHandler(log_file)
         self.log_file_handler.setFormatter(
             logging.Formatter(
-                "[%(levelname)s|%(module)s|L%(lineno)d] %(asctime)s: %(message)s",
+                "[%(levelname)-8s | %(module)-15s | L%(lineno)-5d] | %(asctime)s: %(message)s",
                 "%Y-%m-%dT%H:%M:%S%z",
             )
         )
