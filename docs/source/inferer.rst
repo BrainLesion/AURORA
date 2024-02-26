@@ -16,6 +16,7 @@ Inferer
 --------------------
 .. automodule:: brainles_aurora.inferer.data
     :members:
+    
 `Model`
 --------------------
 .. automodule:: brainles_aurora.inferer.model

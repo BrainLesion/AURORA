@@ -211,5 +211,12 @@ class ModelHandler:
                 return postprocessed_data
 
     def infer(self, data_loader: DataLoader) -> Dict[str, np.ndarray]:
-        """TODO"""
+        """Perform aurora inference on the given data_loader.
+
+        Args:
+            data_loader (DataLoader): data loader
+
+        Returns:
+            Dict[str, np.ndarray]: Post-processed data
+        """
         return self._sliding_window_inference(data_loader=data_loader)
