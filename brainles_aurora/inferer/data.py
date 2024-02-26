@@ -189,7 +189,7 @@ class DataHandler:
         # init transforms
         transforms = [
             (
-                LoadImageD(keys=["images"])
+                LoadImageD(keys=["images"], image_only=True)
                 if self.input_mode == DataMode.NIFTI_FILE
                 else None
             ),
