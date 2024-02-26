@@ -23,6 +23,7 @@ from brainles_aurora.inferer.data import DataHandler
 from brainles_aurora.utils import download_model_weights, remove_path_suffixes
 from monai.inferers import SlidingWindowInferer
 from monai.networks.nets import BasicUNet
+from torch.utils.data import DataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -279,8 +280,13 @@ class AuroraInferer(AbstractInferer):
             Output.METASTASIS_NETWORK: enhancing_out,
         }
 
-    def _sliding_window_inference(self) -> Dict[str, np.ndarray]:
+    def _sliding_window_inference(
+        self, data_loader: DataLoader
+    ) -> Dict[str, np.ndarray]:
         """Perform sliding window inference using monai.inferers.SlidingWindowInferer.
+
+        Args:
+            data_loader (DataLoader): Data loader.
 
         Returns:
             Dict[str, np.ndarray]: Post-processed data
@@ -299,7 +305,7 @@ class AuroraInferer(AbstractInferer):
             self.model.eval()
             self.model = self.model.to(self.device)
             # currently always only 1 batch! TODO: potentialy add support to pass multiple image tuples at once?
-            for data in self.data_loader:
+            for data in data_loader:
                 inputs = data["images"].to(self.device)
 
                 outputs = inferer(inputs, self.model)
@@ -389,24 +395,23 @@ class AuroraInferer(AbstractInferer):
         logger.info(f"Infer with config: {self.config} and device: {self.device}")
 
         # check inputs and get mode , if mode == prev mode => run inference, else load new model
-        prev_mode = self.inference_mode
         data_handler = DataHandler(config=self.config)
         validated_images = data_handler.validate_images(t1=t1, t1c=t1c, t2=t2, fla=fla)
-        self.inference_mode = data_handler.determine_inference_mode(
+        determined_inference_mode = data_handler.determine_inference_mode(
             images=validated_images
         )
 
         logger.info("Setting up Dataloader")
-        self.data_loader = self._get_data_loader()
+        data_loader = data_handler.get_data_loader(images=validated_images)
 
-        if prev_mode != self.inference_mode:
+        if determined_inference_mode != self.inference_mode:
             logger.info("No loaded compatible model found. Loading Model and weights")
+            self.inference_mode = determined_inference_mode
             self.model = self._get_model()
         else:
             logger.info(
-                f"Same inference mode {self.inference_mode} as previous infer call. Re-using loaded model"
+                f"Same inference mode ({self.inference_mode}) as previous infer call. Re-using loaded model"
             )
-        # self.model.eval()
 
         # setup output file paths
         self.output_file_mapping = {
@@ -416,6 +421,6 @@ class AuroraInferer(AbstractInferer):
         }
 
         logger.info(f"Running inference on device := {self.device}")
-        out = self._sliding_window_inference()
+        out = self._sliding_window_inference(data_loader=data_loader)
         logger.info(f"Finished inference {os.linesep}")
         return out

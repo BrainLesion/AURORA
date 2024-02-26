@@ -5,25 +5,25 @@ from typing import List
 
 import monai
 import numpy as np
-from brainles_aurora.inferer.config import AuroraInfererConfig
-from brainles_aurora.inferer.constants import IMGS_TO_MODE_DICT, DataMode, InferenceMode
 from monai.data import list_data_collate
 from monai.transforms import (
     Compose,
     EnsureChannelFirstd,
     Lambdad,
     LoadImageD,
-    RandGaussianNoised,
     ScaleIntensityRangePercentilesd,
     ToTensord,
 )
 from torch.utils.data import DataLoader
 
+from brainles_aurora.inferer.config import AuroraInfererConfig
+from brainles_aurora.inferer.constants import IMGS_TO_MODE_DICT, DataMode, InferenceMode
+
 logger = logging.getLogger(__name__)
 
 
 class DataHandler:
-    """TODO: Add docstring."""
+    """DataHandler class for handling input images and creating the data loader for inference."""
 
     def __init__(self, config: AuroraInfererConfig) -> "DataHandler":
         self.config = config
@@ -64,7 +64,7 @@ class DataHandler:
                 raise FileNotFoundError(f"File {data} not found")
             if not (data.endswith(".nii.gz") or data.endswith(".nii")):
                 raise ValueError(
-                    f"File {data} must be a nifti file with extension .nii or .nii.gz"
+                    f"File {data} must be a NIfTI file with extension .nii or .nii.gz"
                 )
             self.input_mode = DataMode.NIFTI_FILE
             return Path(data).absolute()
@@ -140,7 +140,7 @@ class DataHandler:
 
         assert (
             self.input_mode is not None
-        ), "Input mode not set. Please validate the input images first by calling validate_images(...)."
+        ), "Input mode not set. Please validate the input images first by calling .validate_images(...)."
 
         filtered_images = [img for img in images if img is not None]
         # init transforms
