@@ -8,7 +8,7 @@ enable = true
 [tool.poetry]
 name = "brainles_aurora"
 version = "0.0.0" # will be overwritten by poetry-dynamic-versioning but needs to be set
-description = "TODO."
+description = "Segmentation models for cancer metastasis in brain MR."
 license = "AGPL-3.0"
 
 authors = [

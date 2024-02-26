@@ -20,11 +20,20 @@ logger = logging.getLogger(__name__)
 
 
 class ModelHandler:
-    """TODO"""
+    """Class for model loading, inference and post processing"""
 
     def __init__(
         self, config: AuroraInfererConfig, device: torch.device
     ) -> "ModelHandler":
+        """Initialize the ModelHandler and download model weights if necessary.
+
+        Args:
+            config (AuroraInfererConfig): config
+            device (torch.device): torch device
+
+        Returns:
+            ModelHandler: ModelHandler instance
+        """
         self.config = config
         self.device = device
         # Will be set during infer() call
@@ -39,7 +48,12 @@ class ModelHandler:
     def load_model(
         self, inference_mode: InferenceMode, num_input_modalities: int
     ) -> None:
-        """TODO"""
+        """Load the model based on the inference mode. Will reuse previously loaded model if inference mode is the same.
+
+        Args:
+            inference_mode (InferenceMode): Inference mode
+            num_input_modalities (int): Number of input modalities (range 1-4)
+        """
         if not self.model or self.inference_mode != inference_mode:
             logger.info(
                 f"No loaded compatible model found (Switching from {self.inference_mode} to {inference_mode}). Loading Model and weights..."
@@ -53,8 +67,9 @@ class ModelHandler:
             )
 
     def _load_model(self, num_input_modalities: int) -> torch.nn.Module:
-        """Get the Aurora model based on the inference mode.
-
+        """Internal method to load the Aurora model based on the inference mode.
+        Args:
+            num_input_modalities (int): Number of input modalities (range 1-4)
         Returns:
             torch.nn.Module: Aurora model.
         """
