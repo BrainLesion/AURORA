@@ -1,46 +1,51 @@
-# copied from https://github.com/Nordgaren/Github-Folder-Downloader/blob/master/gitdl.py
+from __future__ import annotations
+
+import logging
 import os
+import tempfile
+import zipfile
+from pathlib import Path
 
 import requests
-from github import ContentFile, Github, Repository
+
+logger = logging.getLogger(__name__)
+
+DOWNLOAD_URL = "https://zenodo.org/api/records/10557069/files-archive"
 
 
-def download(c: ContentFile, out: str):
-    r = requests.get(c.download_url)
-    output_path = f"{out}/{c.path}"
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "wb") as f:
-        print(f"downloading {c.path} to {out}")
-        f.write(r.content)
+def download_model_weights(target_folder: str | Path):
+    """Download the model weights from Zenodo and extract them to the target folder.
 
+    Args:
+        target_folder (str | Path): The folder to which the model weights should be downloaded and extracted to.
+    """
+    # Create the target folder if it does not exist
+    os.makedirs(target_folder, exist_ok=True)
 
-def download_folder(repo: Repository, folder: str, out: str, recursive: bool):
-    contents = repo.get_contents(folder)
-    for c in contents:
-        if c.download_url is None:
-            if recursive:
-                download_folder(repo, c.path, out, recursive)
-            continue
-        download(c, out)
+    # Create a temporary file to store the downloaded zip file
+    with tempfile.NamedTemporaryFile() as temp_zip_file:
+        temp_zip_file_path = temp_zip_file.name
 
+        logger.info(
+            f"Downloading model weights from Zenodo ({DOWNLOAD_URL}). This might take a while..."
+        )
+        # Make a GET request to the URL
+        response = requests.get(DOWNLOAD_URL)
 
-def download_file(repo: Repository, folder: str, out: str):
-    c = repo.get_contents(folder)
-    download(c, out)
+        # Ensure the request was successful
+        if response.status_code != 200:
+            logger.error(
+                f"Failed to download model weights from {DOWNLOAD_URL}. Status code: {response.status_code}"
+            )
+            return
 
+        # Save the zip file locally
+        temp_zip_file.write(response.content)
 
-def download_model_weights(target_folder):
-    # dl
-    g = Github()
-    repo = g.get_repo("BrainLesion/AURORA")
-    dl_folder = "brainles_aurora/model_weights"
-    # get parent of parget folder to prevent /AURORA/brainles_aurora/brainles_aurora/model_weights
-    if "brainles_aurora" in target_folder:
-        target_folder = os.path.dirname(target_folder)
+        logger.info("Zip file downloaded successfully")
 
-    download_folder(
-        repo=repo,
-        folder=dl_folder,
-        out=target_folder,
-        recursive=True,
-    )
+        # Extract the contents of the zip file
+        with zipfile.ZipFile(temp_zip_file_path, "r") as zip_ref:
+            zip_ref.extractall(target_folder)
+
+        logger.info(f"Zip file extracted successfully to {target_folder}")

@@ -43,7 +43,7 @@ class ModelHandler:
         self.lib_path: str = Path(os.path.dirname(os.path.abspath(__file__)))
         self.model_weights_folder = self.lib_path.parent / "model_weights"
         if not self.model_weights_folder.exists():
-            download_model_weights(target_folder=str(self.lib_path.parent))
+            download_model_weights(target_folder=str(self.model_weights_folder))
 
     def load_model(
         self, inference_mode: InferenceMode, num_input_modalities: int
@@ -85,8 +85,7 @@ class ModelHandler:
         # load weights
         weights_path = os.path.join(
             self.model_weights_folder,
-            self.inference_mode,
-            f"{self.config.model_selection}.tar",
+            f"{self.inference_mode}_{self.config.model_selection}.tar",
         )
         if not os.path.exists(weights_path):
             raise NotImplementedError(
