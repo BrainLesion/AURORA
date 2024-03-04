@@ -11,11 +11,10 @@ build:
   tools:
     python: "3.10"
   jobs:
-    post_create_environment:
-      # Install poetry
-      # https://python-poetry.org/docs/#installing-manually
-      - pip install poetry
-      # Tell poetry to not use a virtual environment
+    pre_create_environment:
+      - asdf plugin add poetry
+      - asdf install poetry latest
+      - asdf global poetry latest
       - poetry config virtualenvs.create false
     post_install:
       # Install dependencies with 'docs' dependency group
