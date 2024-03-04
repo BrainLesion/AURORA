@@ -17,6 +17,6 @@ def citation_reminder(func):
         )
         console.rule()
         console.line()
-        func(*args, **kwargs)
+        return func(*args, **kwargs)
 
     return wrapper
