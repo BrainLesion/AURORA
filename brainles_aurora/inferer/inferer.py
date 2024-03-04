@@ -17,6 +17,7 @@ from brainles_aurora.inferer.constants import Device, Output
 from brainles_aurora.inferer.data import DataHandler
 from brainles_aurora.inferer.model import ModelHandler
 from brainles_aurora.utils import remove_path_suffixes
+from brainles_aurora.utils.console_decorators import citation_reminder
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,7 @@ class AuroraInferer(AbstractInferer):
 
         return device
 
+    @citation_reminder
     def infer(
         self,
         t1: str | Path | np.ndarray | None = None,
