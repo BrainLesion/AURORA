@@ -223,4 +223,5 @@ class AuroraInferer(AbstractInferer):
             self.data_handler.save_as_nifti(
                 postproc_data=out, output_file_mapping=output_file_mapping
             )
+        logger.info(f"{' Finished inference run ':=^80}")
         return out
