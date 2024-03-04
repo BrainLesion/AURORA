@@ -28,8 +28,8 @@ def gpu_nifti():
     inferer = AuroraInferer(config=config)
 
     inferer.infer(
-        # t1=t1,
-        # t1c=t1c,
+        t1=t1,
+        t1c=t1c,
         t2=t2,
         fla=fla,
         segmentation_file="test_output/segmentation_tta.nii",
@@ -75,6 +75,5 @@ def gpu_np():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    # gpu_nifti()
-    # gpu_np()
-    gpu_nifti_2()
+    gpu_nifti()
+    # gpu_nifti_2()
