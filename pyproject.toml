@@ -45,7 +45,6 @@ nibabel = ">=4.0.2"
 numpy = ">=1.23.0"
 
 # utils
-PyGithub = "^1.57"
 tqdm = "^4.64.1"
 path = "^16.2.0"
 
