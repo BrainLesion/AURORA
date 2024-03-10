@@ -80,3 +80,7 @@ class Device(str, Enum):
     """Use GPU (CUDA)"""
     AUTO = "auto"
     """Attempt to use GPU, fallback to CPU."""
+
+
+WEIGHTS_DIR = "weights"
+"""Directory name to store model weights."""
