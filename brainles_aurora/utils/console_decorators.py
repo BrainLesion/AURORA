@@ -1,9 +1,11 @@
+from functools import wraps
 from rich.console import Console
 
 CITATION_LINK = "https://github.com/BrainLesion/AURORA#citation"
 
 
 def citation_reminder(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         console = Console()
         console.rule("Thank you for using [bold]AURORA[/bold]")
