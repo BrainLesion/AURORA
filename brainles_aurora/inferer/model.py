@@ -85,7 +85,7 @@ class ModelHandler:
         # load weights
         weights_path = os.path.join(
             self.model_weights_folder,
-            f"{self.inference_mode}_{self.config.model_selection}.tar",
+            f"{self.inference_mode.value}_{self.config.model_selection.value}.tar",
         )
         if not os.path.exists(weights_path):
             raise NotImplementedError(
