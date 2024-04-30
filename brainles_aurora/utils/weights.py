@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-import os
+import shutil
+import sys
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -9,7 +10,6 @@ from typing import Dict
 
 import requests
 from brainles_aurora.inferer.constants import WEIGHTS_DIR_PATTERN
-import sys
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,15 @@ def check_model_weights(package_folder: Path) -> Path:
         return package_folder / latest_downloaded_weights
 
     logger.info(
-        f"New model weights available on Zenodo ({zenodo_metadata['version']}). Downloading..."
+        f"New model weights available on Zenodo ({zenodo_metadata['version']}). Deleting old and fetching new weights..."
+    )
+    # delete old weights
+    shutil.rmtree(
+        package_folder / "testestsetestset",
+        ignore_errors=True,
+        onerror=lambda func, path, excinfo: logger.warning(
+            f"Failed to delete {path}: {excinfo}"
+        ),
     )
     return download_model_weights(
         package_folder=package_folder, zenodo_metadata=zenodo_metadata
