@@ -8,9 +8,8 @@ from typing import Dict
 import numpy as np
 import torch
 from brainles_aurora.inferer.config import AuroraInfererConfig
-from brainles_aurora.inferer.constants import InferenceMode, Output, WEIGHTS_DIR
-from brainles_aurora.inferer.data import DataHandler
-from brainles_aurora.utils import download_model_weights
+from brainles_aurora.inferer.constants import InferenceMode, Output, WEIGHTS_DIR_PATTERN
+from brainles_aurora.utils import check_model_weights
 from monai.inferers import SlidingWindowInferer
 from monai.networks.nets import BasicUNet
 from monai.transforms import RandGaussianNoised
@@ -40,10 +39,7 @@ class ModelHandler:
         self.model = None
         self.inference_mode = None
         # download weights if not present
-        self.lib_path: str = Path(os.path.dirname(os.path.abspath(__file__)))
-        self.model_weights_folder = self.lib_path.parent / WEIGHTS_DIR
-        if not self.model_weights_folder.exists():
-            download_model_weights(target_folder=str(self.model_weights_folder))
+        self.model_weights_folder = check_model_weights()
 
     def load_model(
         self, inference_mode: InferenceMode, num_input_modalities: int

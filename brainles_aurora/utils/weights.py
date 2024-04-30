@@ -6,7 +6,7 @@ import sys
 import zipfile
 from io import BytesIO
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import requests
 from brainles_aurora.inferer.constants import WEIGHTS_DIR_PATTERN
@@ -16,19 +16,21 @@ logger = logging.getLogger(__name__)
 ZENODO_RECORD_URL = "https://zenodo.org/api/records/10557069"
 
 
-def check_model_weights(package_folder: Path) -> Path:
-    """Check if latest model weights are present and download otherwise.
-
-    Args:
-        package_folder (Path): Package folder path in which the model weights are stored.
+def check_model_weights() -> Path:
+    """Check if latest model weights are present and download them otherwise.
 
     Returns:
         Path: Path to the model weights folder.
     """
+    package_folder = Path(__file__).parent.parent
+
     zenodo_metadata = _get_zenodo_metadata()
 
     matching_folders = list(package_folder.glob(WEIGHTS_DIR_PATTERN))
-    if not matching_folders:
+    # Get the latest downloaded weights
+    latest_downloaded_weights = _get_latest_version_folder_name(matching_folders)
+
+    if not latest_downloaded_weights:
         if not zenodo_metadata:
             logger.error(
                 "Model weights not found locally and Zenodo could not be reached. Exiting..."
@@ -38,16 +40,11 @@ def check_model_weights(package_folder: Path) -> Path:
             f"Model weights not found. Downloading the latest model weights {zenodo_metadata['version']} from Zenodo..."
         )
 
-        return download_model_weights(
+        return _download_model_weights(
             package_folder=package_folder, zenodo_metadata=zenodo_metadata
         )
 
-    # Get the latest downloaded weights
-    latest_downloaded_weights = sorted(
-        matching_folders,
-        reverse=True,
-        key=lambda x: tuple(map(int, x.split("_v")[1].split("."))),
-    )[0]
+    logger.info(f"Found downloaded local weights: {latest_downloaded_weights}")
 
     if not zenodo_metadata:
         logger.warning(
@@ -67,15 +64,28 @@ def check_model_weights(package_folder: Path) -> Path:
     )
     # delete old weights
     shutil.rmtree(
-        package_folder / "testestsetestset",
-        ignore_errors=True,
+        package_folder / latest_downloaded_weights,
         onerror=lambda func, path, excinfo: logger.warning(
             f"Failed to delete {path}: {excinfo}"
         ),
     )
-    return download_model_weights(
+    return _download_model_weights(
         package_folder=package_folder, zenodo_metadata=zenodo_metadata
     )
+
+
+def _get_latest_version_folder_name(folders: List[Path]) -> str | None:
+    if not folders:
+        return None
+    latest_downloaded_folder = sorted(
+        folders,
+        reverse=True,
+        key=lambda x: tuple(map(int, str(x).split("_v")[1].split("."))),
+    )[0]
+    # check folder is not empty
+    if not list(latest_downloaded_folder.glob("*")):
+        return None
+    return latest_downloaded_folder.name
 
 
 def _get_zenodo_metadata() -> Dict | None:
@@ -92,12 +102,15 @@ def _get_zenodo_metadata() -> Dict | None:
         return None
 
 
-def download_model_weights(package_folder: Path, zenodo_metadata: Dict) -> None:
+def _download_model_weights(package_folder: Path, zenodo_metadata: Dict) -> Path:
     """Download the latest model weights from Zenodo and extract them to the target folder.
 
     Args:
         package_folder (Path): Package folder path in which the model weights will be stored.
-       zenodo_metadata (Dict): Metadata for the Zenodo record.
+        zenodo_metadata (Dict): Metadata for the Zenodo record.
+
+    Returns:
+        Path: Path to the model weights folder.
     """
     weights_folder = package_folder / f"weights_v{zenodo_metadata['version']}"
 

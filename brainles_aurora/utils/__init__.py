@@ -1,2 +1,2 @@
 from .utils import remove_path_suffixes
-from .weights import download_model_weights
+from .weights import check_model_weights
