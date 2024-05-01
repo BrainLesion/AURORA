@@ -38,7 +38,8 @@ class ModelHandler:
         # Will be set during infer() call
         self.model = None
         self.inference_mode = None
-        # download weights if not present
+
+        # get location of model weights
         self.model_weights_folder = check_model_weights()
 
     def load_model(
