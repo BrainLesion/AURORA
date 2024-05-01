@@ -75,6 +75,14 @@ def check_model_weights() -> Path:
 
 
 def _get_latest_version_folder_name(folders: List[Path]) -> str | None:
+    """Get the latest (non empty) version folder name from the list of folders.
+
+    Args:
+        folders (List[Path]): List of folders matching the pattern.
+
+    Returns:
+        str | None: Latest version folder name if one exists, else None.
+    """
     if not folders:
         return None
     latest_downloaded_folder = sorted(
