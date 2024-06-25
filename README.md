@@ -17,8 +17,8 @@ pip install brainles-aurora
 ## Recommended Environment
 
 - CUDA 11.4+ (https://developer.nvidia.com/cuda-toolkit)
-- Python 3.10+
-- GPU with CUDA support and at least 8GB of VRAM
+- Python 3.8+
+- GPU with CUDA support and at least 6GB of VRAM
 
 ## Usage
 BrainLes features Jupyter Notebook [tutorials](https://github.com/BrainLesion/tutorials/tree/main/AURORA) with usage instructions.

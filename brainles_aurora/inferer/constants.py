@@ -82,5 +82,5 @@ class Device(str, Enum):
     """Attempt to use GPU, fallback to CPU."""
 
 
-WEIGHTS_DIR = "weights"
-"""Directory name to store model weights."""
+WEIGHTS_DIR_PATTERN = "weights_v*.*.*"
+"""Directory name pattern to store model weights. E.g. weights_v1.0.0"""

@@ -74,6 +74,6 @@ def gpu_np():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    # logging.basicConfig(level=)
     gpu_nifti()
     # gpu_nifti_2()
