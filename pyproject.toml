@@ -9,7 +9,7 @@ enable = true
 name = "brainles_aurora"
 version = "0.0.0"                                                      # will be overwritten by poetry-dynamic-versioning but needs to be set
 description = "Segmentation models for cancer metastasis in brain MR."
-license = "AGPL-3.0"
+license = "Apache-2.0"
 
 authors = [
   "Florian Kofler <florian.kofler@tum.de>",
