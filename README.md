@@ -1,14 +1,18 @@
-[![PyPI version AURORA](https://badge.fury.io/py/brainles-aurora.svg)](https://pypi.python.org/pypi/brainles-aurora/)
+# AURORA
+
+[![Python Versions](https://img.shields.io/pypi/pyversions/brainles_aurora)](https://pypi.org/project/brainles_aurora/)
+[![Stable Version](https://img.shields.io/pypi/v/brainles_aurora?label=stable)](https://pypi.python.org/pypi/brainles_aurora/)
 [![Documentation Status](https://readthedocs.org/projects/brainles-aurora/badge/?version=latest)](http://brainles-aurora.readthedocs.io/?badge=latest)
 [![tests](https://github.com/BrainLesion/AURORA/actions/workflows/tests.yml/badge.svg)](https://github.com/BrainLesion/AURORA/actions/workflows/tests.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+<!-- [![codecov](https://codecov.io/gh/BrainLesion/BraTS/graph/badge.svg?token=A7FWUKO9Y4)](https://codecov.io/gh/BrainLesion/BraTS) -->
 
-# AURORA
 Deep learning models for brain cancer metastasis segmentation based on the manuscripts:
 * [Identifying core MRI sequences for reliable automatic brain metastasis segmentation](https://www.medrxiv.org/content/10.1101/2023.05.02.23289342v1)
 * [Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
 
 ## Installation
-With a Python 3.10+ environment, you can install directly from [pypi.org](https://pypi.org/project/brainles-aurora/):
+With a Python 3.8+ environment, you can install `brainles_aurora` directly from [pypi.org](https://pypi.org/project/brainles-aurora/):
 
 ```
 pip install brainles-aurora
@@ -22,6 +26,29 @@ pip install brainles-aurora
 
 ## Usage
 BrainLes features Jupyter Notebook [tutorials](https://github.com/BrainLesion/tutorials/tree/main/AURORA) with usage instructions.
+
+A minimal example could look like this:
+
+```python
+    from brainles_aurora.inferer import AuroraInferer, AuroraInfererConfig
+
+    config = AuroraInfererConfig(
+        tta=False, cuda_devices="4"
+    )  # disable tta for faster inference in this showcase
+    inferer = AuroraInferer(config=config)
+
+    inferer.infer(
+        t1="t1.nii.gz",
+        t1c="t1c.nii.gz",
+        t2="t2.nii.gz",
+        fla="fla.nii.gz",
+        segmentation_file="segmentation.nii.gz",
+        whole_tumor_unbinarized_floats_file="whole_network.nii.gz",
+        metastasis_unbinarized_floats_file="metastasis_network.nii.gz",
+        log_file="aurora.log",
+    )
+
+```
 
 ## Citation
 Please support our development by citing the following manuscripts:
@@ -40,9 +67,9 @@ Please support our development by citing the following manuscripts:
 }
 ```
 
-also consider citing the original AURORA manuscript, especially when using the `vanilla` model:
+also consider citing the original AURORA manuscript, especially when using the `vanilla` model (all 4 modalities as input):
 
-[Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
+[Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)<>
 
 ```
 @article{buchner2022development,
