@@ -69,7 +69,7 @@ Please support our development by citing the following manuscripts:
 
 also consider citing the original AURORA manuscript, especially when using the `vanilla` model (all 4 modalities as input):
 
-[Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)<>
+[Development and external validation of an MRI-based neural network for brain metastasis segmentation in the AURORA multicenter study](https://www.sciencedirect.com/science/article/pii/S0167814022045625)
 
 ```
 @article{buchner2022development,
